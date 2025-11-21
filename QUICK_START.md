@@ -2,12 +2,12 @@
 
 Frontend (React + Vite):
 URL: http://localhost:5173
-Location: /Users/keshavhome/glifaudit-New/V2.1/glifaudit-clean2
+Location: /Users/keshavhome/glifaudit-New/V2.1/glif-platform-frontend
 Features: Batch Audit, Single Audit, Portfolio View
 Connects to: Backend API at http://localhost:5005
 Backend (Flask):
 URL: http://localhost:5005
-Location: /Users/keshavhome/glif-RulesEngine/Stage123/Stage123-checkpost
+Location: /Users/keshavhome/glif-RulesEngine/Stage123/glif-platform-backend
 Features:
     Audit Oversight API (for frontend)
     Rules Engine Dashboard
@@ -23,11 +23,11 @@ Feature	URL	Description
 To Start Everything:
 bash
 # Terminal 1 - Backend (already running ✅)
-cd /Users/keshavhome/glif-RulesEngine/Stage123/Stage123-checkpost
+cd /Users/keshavhome/glif-RulesEngine/Stage123/glif-platform-backend
 python app.py
 
 # Terminal 2 - Frontend
-cd /Users/keshavhome/glifaudit-New/V2.1/glifaudit-clean2
+cd /Users/keshavhome/glifaudit-New/V2.1/glif-platform-frontend
 npm run dev
 You're all set! One clean backend, one modern frontend, ready for customer demos. 🚀
 ## For Immediate Demo

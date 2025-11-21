@@ -1,5 +1,5 @@
 // API Service for GLIF Audit Oversight
-// Updated to point to Stage123-checkpost backend
+// Updated to point to glif-platform-backend
 const API_BASE = 'http://localhost:5002';
 
 export async function testConnection() {

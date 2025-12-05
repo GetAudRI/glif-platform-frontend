@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TrendingUp, Zap, CheckCircle2, Clock } from 'lucide-react';
+import { TrendingUp, Zap, CheckCircle2, Clock, DollarSign, ShieldAlert, Car, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ProcessingVelocityDashboardProps {
@@ -123,6 +123,44 @@ export default function ProcessingVelocityDashboard({ className = '' }: Processi
         </div>
       </div>
 
+      {/* This Quarter Metrics Section */}
+      <div className="bg-white rounded-xl border-2 border-gray-200 p-6 shadow-md">
+        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <div className="w-2 h-8 bg-blue-500 rounded"></div>
+          This Quarter - Q3 2025
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <DollarSign className="w-6 h-6 text-blue-600" />
+              <div className="text-sm font-medium text-gray-700">Overpayment</div>
+            </div>
+            <div className="text-3xl font-bold text-blue-600">$23,000</div>
+          </div>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <ShieldAlert className="w-6 h-6 text-red-600" />
+              <div className="text-sm font-medium text-gray-700">Potential Fraud Detection</div>
+            </div>
+            <div className="text-3xl font-bold text-red-600">4 Claims</div>
+          </div>
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border-2 border-orange-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <Car className="w-6 h-6 text-orange-600" />
+              <div className="text-sm font-medium text-gray-700">Rental Overages</div>
+            </div>
+            <div className="text-3xl font-bold text-orange-600">$12,000</div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border-2 border-purple-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle className="w-6 h-6 text-purple-600" />
+              <div className="text-sm font-medium text-gray-700">High Risk Shop Pattern</div>
+            </div>
+            <div className="text-3xl font-bold text-purple-600">5</div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content: Before/After + Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Before/After Comparison */}
@@ -145,21 +183,30 @@ export default function ProcessingVelocityDashboard({ className = '' }: Processi
                 <span className="text-red-500 mt-0.5">•</span>
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">50 claims/week</div>
-                  <div className="text-xs text-gray-600">Manual sample review</div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">2-5% coverage</div>
-                  <div className="text-xs text-gray-600">Limited sampling</div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-red-500 mt-0.5">•</span>
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">4-6 hours/claim</div>
-                  <div className="text-xs text-gray-600">Per audit time</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">•</span>
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-gray-900">Quarterly findings (3-month delay)</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5">•</span>
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-gray-900">Sample-based fraud detection</div>
                 </div>
               </div>
             </div>
@@ -187,22 +234,31 @@ export default function ProcessingVelocityDashboard({ className = '' }: Processi
               <div className="flex items-start gap-2">
                 <span className="text-green-500 mt-0.5">•</span>
                 <div className="flex-1">
-                  <div className="font-medium text-sm text-gray-900">{totalToday.toLocaleString()} claims/day</div>
-                  <div className="text-xs text-gray-600">Automated processing</div>
+                  <div className="font-medium text-sm text-gray-900">2,005 claims/day</div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-green-500 mt-0.5">•</span>
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">100% coverage</div>
-                  <div className="text-xs text-gray-600">Complete validation</div>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-green-500 mt-0.5">•</span>
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">3.2 minutes/claim</div>
-                  <div className="text-xs text-gray-600">Per audit time</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-green-500 mt-0.5">•</span>
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-gray-900">Real-time issue detection (&lt;24 hours)</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-green-500 mt-0.5">•</span>
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-gray-900">Pattern-based fraud detection across ALL claims</div>
                 </div>
               </div>
             </div>

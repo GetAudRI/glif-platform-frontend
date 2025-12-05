@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus, Search, Clock, DollarSign, HardDrive } from 'lucide-react';
+import { listDocuments, uploadDocument } from './services/api';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
@@ -28,19 +29,24 @@ export default function SingleFileAudit() {
   // Team Checkposts State
   const [checkpostMode, setCheckpostMode] = useState<'skip' | 'upload' | 'select'>('skip');
   const [checkpostFile, setCheckpostFile] = useState<File | null>(null);
-  const [selectedCheckpostIds, setSelectedCheckpostIds] = useState<number[]>([]);
-  const [existingCheckposts, setExistingCheckposts] = useState<any[]>([]);
+  const [selectedTeamCheckpostFileId, setSelectedTeamCheckpostFileId] = useState<number | null>(null);
+  const [existingTeamCheckpostFiles, setExistingTeamCheckpostFiles] = useState<any[]>([]);
   const [checkpostLoading, setCheckpostLoading] = useState(false);
   const [checkpostData, setCheckpostData] = useState<any>(null);
 
   // Claim State
+  const [claimMode, setClaimMode] = useState<'upload' | 'select'>('select');
   const [claimFile, setClaimFile] = useState<File | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimData, setClaimData] = useState<any>(null);
   const [documentId, setDocumentId] = useState<number | null>(null);
+  const [existingClaims, setExistingClaims] = useState<any[]>([]);
+  const [claimSearchQuery, setClaimSearchQuery] = useState('');
+  const [loadingClaims, setLoadingClaims] = useState(false);
 
   // Validation State
   const [validateLoading, setValidateLoading] = useState(false);
+  const [useFastValidation, setUseFastValidation] = useState(true); // Default to fast validation
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState('');
   const [csvFile, setCsvFile] = useState('');
@@ -54,7 +60,7 @@ export default function SingleFileAudit() {
     { number: 5, label: 'Results', icon: '📊' }
   ];
 
-  // Load existing playbooks and checkposts on mount
+  // Load existing playbooks, checkposts, and claims on mount
   useEffect(() => {
     // Fetch playbooks
     fetch('http://localhost:5002/api/audit-oversight/playbooks')
@@ -66,16 +72,45 @@ export default function SingleFileAudit() {
       })
       .catch(err => console.error('Failed to load playbooks:', err));
 
-    // Fetch checkposts
-    fetch('http://localhost:5002/api/audit-oversight/checkposts?type=team')
+    // Fetch team checkpost files
+    fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setExistingCheckposts(data.checkposts);
+          setExistingTeamCheckpostFiles(data.team_checkpost_files || []);
         }
       })
-      .catch(err => console.error('Failed to load checkposts:', err));
+      .catch(err => console.error('Failed to load team checkpost files:', err));
+    
+    // Load existing claims when component mounts or when entering step 3
+    loadExistingClaims();
   }, []);
+
+  // Load existing claims function
+  const loadExistingClaims = async () => {
+    setLoadingClaims(true);
+    try {
+      const data = await listDocuments({
+        docType: 'claim',
+        limit: 50,
+        extractedOnly: true
+      });
+      if (data.success) {
+        setExistingClaims(data.documents || []);
+      }
+    } catch (err) {
+      console.error('Failed to load existing claims:', err);
+    } finally {
+      setLoadingClaims(false);
+    }
+  };
+
+  // Filter claims based on search query
+  const filteredClaims = existingClaims.filter((claim: any) => {
+    if (!claimSearchQuery.trim()) return true;
+    const query = claimSearchQuery.toLowerCase();
+    return claim.name?.toLowerCase().includes(query);
+  });
 
   const getStepStatus = (stepNum: number): StepStatus => {
     if (stepNum < currentStep) return 'complete';
@@ -169,26 +204,54 @@ export default function SingleFileAudit() {
         body: formData
       });
 
-      if (!response.ok) throw new Error('Failed to upload checkpost');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload checkpost');
+      }
 
       const data = await response.json();
 
-      // Store the newly created checkpost IDs
-      if (data.checkpost_ids && data.checkpost_ids.length > 0) {
-        setSelectedCheckpostIds(data.checkpost_ids);
-        setCheckpostData({ count: data.checkpost_ids.length });
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to upload team checkpost file');
+      }
+
+      // Store the team checkpost file ID (new model)
+      if (data.team_checkpost_file_id) {
+        setSelectedTeamCheckpostFileId(data.team_checkpost_file_id);
+        setCheckpostData({ 
+          count: data.checkposts_count || 0,
+          team_checkpost_file_id: data.team_checkpost_file_id,
+          source_file: data.source_file || file.name
+        });
+        console.log('✅ Team checkpost file uploaded:', data.team_checkpost_file_id);
+        
+        // Reload team checkpost files list
+        const listResponse = await fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true');
+        const listData = await listResponse.json();
+        if (listData.success) {
+          setExistingTeamCheckpostFiles(listData.team_checkpost_files || []);
+        }
+      } else {
+        throw new Error('No team checkpost file ID returned from server');
       }
     } catch (err: any) {
+      console.error('Checkpost upload error:', err);
       setError(err.message || 'Failed to process checkpost');
     } finally {
       setCheckpostLoading(false);
     }
   };
 
-  const handleSelectCheckposts = (checkpostIds: number[]) => {
-    setSelectedCheckpostIds(checkpostIds);
-    setCheckpostData({ count: checkpostIds.length });
+  const handleSelectTeamCheckpostFile = (teamCheckpostFileId: number) => {
+    setSelectedTeamCheckpostFileId(teamCheckpostFileId);
+    const selectedFile = existingTeamCheckpostFiles.find((f: any) => f.id === teamCheckpostFileId);
+    setCheckpostData({ 
+      count: selectedFile?.checkposts_count || 0,
+      team_checkpost_file_id: teamCheckpostFileId,
+      source_file: selectedFile?.name
+    });
     setCheckpostFile(null); // No file uploaded, selected from DB
+    console.log('✅ Selected team checkpost file:', teamCheckpostFileId);
   };
 
   const handleClaimUpload = async (file: File) => {
@@ -211,39 +274,19 @@ export default function SingleFileAudit() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await fetch('http://localhost:5002/api/audit-oversight/documents/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        // If response is not JSON, it might be a network error or server error
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
-      }
-
-      if (!response.ok) {
-        // Extract error message from backend response
-        const errorMsg = data?.error || data?.message || `Server error: ${response.status} ${response.statusText}`;
-        console.error('Upload error:', errorMsg, data);
-        throw new Error(errorMsg);
-      }
-
-      if (!data.success) {
-        const errorMsg = data?.error || data?.message || 'Failed to upload claim';
-        throw new Error(errorMsg);
-      }
+      const data = await uploadDocument(file);
 
       setDocumentId(data.document_id);
       setClaimData(data.extracted_data);
+      
+      // Show message if extraction was skipped (cached)
+      if (data.already_extracted) {
+        console.log('✅ Claim already extracted - using cached data');
+      }
+      
+      // Reload claims list to include the newly uploaded one
+      await loadExistingClaims();
     } catch (err: any) {
       console.error('Claim upload error:', err);
       // Handle network errors
@@ -252,6 +295,32 @@ export default function SingleFileAudit() {
       } else {
         setError(err.message || 'Failed to process claim');
       }
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const handleSelectExistingClaim = async (claim: any) => {
+    setClaimLoading(true);
+    setError('');
+    
+    try {
+      // Fetch the full claim data
+      const response = await fetch(`http://localhost:5002/api/audit-oversight/documents/${claim.id}`);
+      const data = await response.json();
+      
+      if (!data.success || !data.document) {
+        throw new Error('Failed to load claim data');
+      }
+      
+      setDocumentId(claim.id);
+      setClaimData(data.document.extracted_data);
+      setClaimFile(new File([], claim.name)); // Create a file object for display
+      
+      console.log('✅ Selected existing claim:', claim.name);
+    } catch (err: any) {
+      console.error('Error selecting claim:', err);
+      setError(err.message || 'Failed to load claim');
     } finally {
       setClaimLoading(false);
     }
@@ -274,10 +343,26 @@ export default function SingleFileAudit() {
       return;
     }
 
+    const requestBody: any = {
+      playbook_id: selectedPlaybookId,
+      document_id: documentId,
+      use_fast_validation: useFastValidation
+    };
+    
+    // Only include team_checkpost_file_id if one is selected
+    if (selectedTeamCheckpostFileId) {
+      requestBody.team_checkpost_file_id = selectedTeamCheckpostFileId;
+      console.log('✅ Including team checkpost file in validation:', selectedTeamCheckpostFileId);
+    } else {
+      console.log('⚠️  No team checkpost file selected');
+    }
+    
     console.log('Starting validation with:', {
       playbook_id: selectedPlaybookId,
-      checkpost_ids: selectedCheckpostIds,
-      document_id: documentId
+      team_checkpost_file_id: selectedTeamCheckpostFileId,
+      document_id: documentId,
+      checkpost_data: checkpostData,
+      requestBody
     });
 
     try {
@@ -285,11 +370,7 @@ export default function SingleFileAudit() {
       const response = await fetch('http://localhost:5002/api/audit-oversight/audit/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playbook_id: selectedPlaybookId,
-          checkpost_ids: selectedCheckpostIds,
-          document_id: documentId
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -314,7 +395,17 @@ export default function SingleFileAudit() {
         claim_id: data.claim_id,
         rule_checks: data.rule_checks || [],
         errors: data.errors || [],
-        warnings: data.warnings || []
+        warnings: data.warnings || [],
+        // Include cost and AI metadata
+        total_cost: data.total_cost || 0,
+        playbook_cost: data.playbook_cost || 0,
+        document_cost: data.document_cost || 0,
+        total_tokens: data.total_tokens || 0,
+        input_tokens: data.input_tokens || 0,
+        output_tokens: data.output_tokens || 0,
+        ai_model: data.ai_model || 'claude-3.5-sonnet',
+        confidence_score: data.confidence_score || 85,
+        validation_timestamp: data.validation_timestamp
       });
 
       setCurrentStep(5);
@@ -544,14 +635,25 @@ export default function SingleFileAudit() {
               Skip
             </button>
             <button
-              onClick={() => setCheckpostMode('select')}
+              onClick={() => {
+                setCheckpostMode('select');
+                // Reload team checkpost files when switching to select mode
+                fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+                  .then(res => res.json())
+                  .then(data => {
+                    if (data.success) {
+                      setExistingTeamCheckpostFiles(data.team_checkpost_files || []);
+                    }
+                  })
+                  .catch(err => console.error('Failed to load team checkpost files:', err));
+              }}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${checkpostMode === 'select'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
             >
               <List className="inline-block w-5 h-5 mr-2" />
-              Select Existing
+              Select Existing ({existingTeamCheckpostFiles.length})
             </button>
             <button
               onClick={() => setCheckpostMode('upload')}
@@ -576,47 +678,51 @@ export default function SingleFileAudit() {
           {/* Select Existing Mode */}
           {checkpostMode === 'select' && (
             <div>
-              {existingCheckposts.length === 0 ? (
+              {existingTeamCheckpostFiles.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600">No team checkposts found in database.</p>
+                  <p className="text-gray-600">No team checkpost files found in database.</p>
                   <button
                     onClick={() => setCheckpostMode('upload')}
                     className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    Upload Your First Checkpost
+                    Upload Your First Checkpost File
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 mb-3">Select one or more checkposts to include:</p>
-                  {existingCheckposts.map((checkpost) => (
+                  <p className="text-sm text-gray-600 mb-3">Select a team checkpost file to include:</p>
+                  {existingTeamCheckpostFiles.map((file: any) => (
                     <div
-                      key={checkpost.id}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedCheckpostIds.includes(checkpost.id)
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
+                      key={file.id}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedTeamCheckpostFileId === file.id
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      }`}
                       onClick={() => {
-                        const isSelected = selectedCheckpostIds.includes(checkpost.id);
-                        const newSelection = isSelected
-                          ? selectedCheckpostIds.filter(id => id !== checkpost.id)
-                          : [...selectedCheckpostIds, checkpost.id];
-                        handleSelectCheckposts(newSelection);
+                        if (selectedTeamCheckpostFileId === file.id) {
+                          // Deselect if already selected
+                          setSelectedTeamCheckpostFileId(null);
+                          setCheckpostData(null);
+                        } else {
+                          // Select this file
+                          handleSelectTeamCheckpostFile(file.id);
+                        }
                       }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{checkpost.text}</h4>
+                          <h4 className="font-semibold text-gray-900">{file.name}</h4>
                           <div className="flex gap-4 mt-2 text-sm text-gray-600">
-                            <span>📅 {new Date(checkpost.created_at).toLocaleDateString()}</span>
-                            <span>{checkpost.blocking ? '🔴 Blocking' : '🟢 Non-blocking'}</span>
-                            {checkpost.evidence_required && (
-                              <span>📎 Evidence: {checkpost.evidence_required}</span>
+                            <span>📅 {new Date(file.created_at).toLocaleDateString()}</span>
+                            <span>📋 {file.checkposts_count || 0} checkposts</span>
+                            {file.linked_playbook && (
+                              <span className="text-blue-600">🔗 Linked to: {file.linked_playbook}</span>
                             )}
                           </div>
                         </div>
-                        {selectedCheckpostIds.includes(checkpost.id) && (
-                          <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                        {selectedTeamCheckpostFileId === file.id && (
+                          <CheckCircle2 className="w-6 h-6 text-blue-600 flex-shrink-0 ml-2" />
                         )}
                       </div>
                     </div>
@@ -692,43 +798,155 @@ export default function SingleFileAudit() {
       )}
 
 
-      {/* Step 3: Upload Claim */}
+      {/* Step 3: Upload/Select Claim */}
       {currentStep === 3 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 2: Upload Claim Document 🚗
+            Step 3: Select or Upload Claim Document 🚗
           </h2>
           <p className="text-gray-600 mb-6">
-            Upload the insurance claim document. AI will extract structured claim data.
+            Choose an existing extracted claim or upload a new one. Already extracted claims skip AI processing.
           </p>
 
-          <div
-            className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${claimLoading ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+          {/* Mode Tabs */}
+          <div className="flex gap-4 mb-6 border-b border-gray-200">
+            <button
+              onClick={() => {
+                setClaimMode('select');
+                loadExistingClaims();
+              }}
+              className={`px-6 py-3 font-medium transition-colors ${
+                claimMode === 'select'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
-            onClick={() => !claimLoading && document.getElementById('claimInput')?.click()}
-          >
-            <div className="text-6xl mb-4">🚗</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {claimFile ? claimFile.name : 'Drop claim document here'}
-            </h3>
-            <p className="text-gray-600 mb-2">or click to browse</p>
-            <p className="text-sm text-gray-500">Supports: PDF, TXT, JSON (max 16MB)</p>
-            <input
-              id="claimInput"
-              type="file"
-              accept=".pdf,.txt,.json"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleClaimUpload(e.target.files[0])}
-            />
+            >
+              Select Existing ({existingClaims.length})
+            </button>
+            <button
+              onClick={() => setClaimMode('upload')}
+              className={`px-6 py-3 font-medium transition-colors ${
+                claimMode === 'upload'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Upload New
+            </button>
           </div>
 
-          {claimLoading && (
-            <div className="mt-6 text-center">
-              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent mb-3" />
-              <p className="text-gray-600">Extracting claim data with AI...</p>
+          {/* Select Existing Claim Mode */}
+          {claimMode === 'select' && (
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search claims by filename..."
+                  value={claimSearchQuery}
+                  onChange={(e) => setClaimSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Claims List */}
+              {loadingClaims ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent mb-3" />
+                  <p className="text-gray-600">Loading existing claims...</p>
+                </div>
+              ) : filteredClaims.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600 mb-2">
+                    {claimSearchQuery ? 'No claims found matching your search.' : 'No extracted claims found.'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {claimSearchQuery ? 'Try a different search term or' : ''} Upload a new claim to get started.
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                  {filteredClaims.map((claim: any) => (
+                    <button
+                      key={claim.id}
+                      onClick={() => handleSelectExistingClaim(claim)}
+                      disabled={claimLoading}
+                      className={`w-full p-4 text-left hover:bg-blue-50 transition-colors ${
+                        documentId === claim.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
+                      } ${claimLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 truncate">{claim.name}</h4>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                            {claim.uploaded_at && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{new Date(claim.uploaded_at).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            {claim.file_size_display && (
+                              <div className="flex items-center gap-1">
+                                <HardDrive className="w-4 h-4" />
+                                <span>{claim.file_size_display}</span>
+                              </div>
+                            )}
+                            {claim.total_cost !== undefined && claim.total_cost > 0 && (
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="w-4 h-4" />
+                                <span>${claim.total_cost.toFixed(6)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {documentId === claim.id && (
+                          <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 ml-2" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
+          {/* Upload New Claim Mode */}
+          {claimMode === 'upload' && (
+            <div>
+              <div
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+                  claimLoading
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                }`}
+                onClick={() => !claimLoading && document.getElementById('claimInput')?.click()}
+              >
+                <div className="text-6xl mb-4">🚗</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {claimFile ? claimFile.name : 'Drop claim document here'}
+                </h3>
+                <p className="text-gray-600 mb-2">or click to browse</p>
+                <p className="text-sm text-gray-500">Supports: PDF, TXT, JSON (max 16MB)</p>
+                <input
+                  id="claimInput"
+                  type="file"
+                  accept=".pdf,.txt,.json"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleClaimUpload(e.target.files[0])}
+                />
+              </div>
+
+              {claimLoading && (
+                <div className="mt-6 text-center">
+                  <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent mb-3" />
+                  <p className="text-gray-600">Extracting claim data with AI...</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Extracted Data Preview */}
           {claimData && !claimLoading && (
             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-900 mb-2">Extracted Claim Data Preview:</h4>
@@ -738,9 +956,10 @@ export default function SingleFileAudit() {
             </div>
           )}
 
+          {/* Navigation Buttons */}
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => setCurrentStep(1)}
+              onClick={() => setCurrentStep(2)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
               ← Back
@@ -833,11 +1052,42 @@ export default function SingleFileAudit() {
             </div>
             <div className="flex justify-between mb-3">
               <strong className="text-gray-900">Team Checkposts:</strong>
-              <span className="text-gray-700">{selectedCheckpostIds.length} selected</span>
+              <span className="text-gray-700">
+                {selectedTeamCheckpostFileId 
+                  ? `${checkpostData?.count || 0} checkposts selected (File ID: ${selectedTeamCheckpostFileId})`
+                  : '0 checkposts selected'}
+              </span>
             </div>
             <div className="flex justify-between">
               <strong className="text-gray-900">Claim Document:</strong>
               <span className="text-gray-700">{claimFile?.name}</span>
+            </div>
+          </div>
+
+          {/* Fast/Full Validation Toggle */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 mb-1">Validation Mode</h4>
+                <p className="text-sm text-gray-600">
+                  {useFastValidation
+                    ? '⚡ Fast Validation: Using critical rules (15 top rules) for quick results (~5-10 seconds)'
+                    : '🔍 Full Validation: Using all rules for comprehensive validation (~30-40 seconds)'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useFastValidation}
+                  onChange={(e) => setUseFastValidation(e.target.checked)}
+                  disabled={validateLoading}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ml-3 text-sm font-medium text-gray-700">
+                  {useFastValidation ? 'Fast' : 'Full'}
+                </span>
+              </label>
             </div>
           </div>
 

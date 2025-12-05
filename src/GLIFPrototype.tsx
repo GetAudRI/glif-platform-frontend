@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, Database, Settings, BarChart3, FileSearch, Network, 
   CheckCircle2, AlertTriangle, XCircle, Download, Plus, Search,
-  ChevronRight, Clock, TrendingUp, Shield, Users, Activity, Zap, DollarSign
+  ChevronRight, Clock, TrendingUp, Shield, Users, Activity, Zap, DollarSign, ClipboardCheck
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
@@ -12,12 +12,18 @@ import {
   testConnection, testAuditModule, listClaims, listSOPs, startAudit, 
   startExtraction, getAuditProgress, runAuditCheck, getExtractedRules,
   startValidation, getValidationResults,  // DAY 4: Added validation imports
-  saveRulesToJSON  // MANUAL SAVE: Added save rules function
+  saveRulesToJSON,  // MANUAL SAVE: Added save rules function
+  listDocuments, getDocument,  // DOCUMENTS: Added document functions
+  generateClaimsFromSOP  // CLAIM GENERATION: Added claim generation function
 } from './services/api';
 import SingleFileAudit from './SingleFileAudit';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
 import LiveAuditMonitor from './LiveAuditMonitor';
 import CostAnalytics from './components/CostAnalytics';
+import RulesEngineDashboard from './components/RulesEngineDashboard';
+import AuditResults from './components/AuditResults';
+import ViewExtractions from './components/ViewExtractions';
+import DocumentViewer from './components/DocumentViewer';
 // Types
 type GNode = { 
   id: string; 
@@ -162,6 +168,136 @@ export default function GLIFPrototype() {
   const [drillDownClaim, setDrillDownClaim] = useState<any>(null);
   // ==================== END DAY 5 STATE ====================
   
+  // ==================== CORPUS TAB STATE ====================
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [playbooks, setPlaybooks] = useState<any[]>([]);
+  const [teamCheckpostFiles, setTeamCheckpostFiles] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
+  const [viewMode, setViewMode] = useState<'document' | 'extractions' | null>(null);
+  const [corpusView, setCorpusView] = useState<'claims' | 'sops' | 'checkposts'>('claims');
+  // ==================== END CORPUS TAB STATE ====================
+  
+  // ==================== CLAIM GENERATOR COMPONENT ====================
+  function ClaimGenerator() {
+    const [sopFile, setSopFile] = useState<File | null>(null);
+    const [numClaims, setNumClaims] = useState(5);
+    const [compliantRatio, setCompliantRatio] = useState(0.5);
+    const [generating, setGenerating] = useState(false);
+    const [result, setResult] = useState<any>(null);
+    const [error, setError] = useState('');
+
+    const handleGenerate = async () => {
+      if (!sopFile) {
+        setError('Please select a SOP file');
+        return;
+      }
+
+      setGenerating(true);
+      setError('');
+      setResult(null);
+
+      try {
+        const data = await generateClaimsFromSOP(sopFile, numClaims, compliantRatio);
+        setResult(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to generate claims');
+      } finally {
+        setGenerating(false);
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload SOP File
+            </label>
+            <input
+              type="file"
+              accept=".pdf,.txt"
+              onChange={(e) => setSopFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Number of Claims (1-20)
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={numClaims}
+              onChange={(e) => setNumClaims(parseInt(e.target.value) || 5)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Compliant Ratio (0.0 - 1.0)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.1"
+              value={compliantRatio}
+              onChange={(e) => setCompliantRatio(parseFloat(e.target.value) || 0.5)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={generating || !sopFile}
+          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {generating ? (
+            <>
+              <Clock className="w-4 h-4 animate-spin" />
+              Generating Claims...
+            </>
+          ) : (
+            <>
+              <FileText className="w-4 h-4" />
+              Generate Claims
+            </>
+          )}
+        </button>
+
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-green-900 mb-1">
+                  Successfully generated {result.generated_count} claims!
+                </p>
+                <p className="text-sm text-green-700">
+                  Files saved to: <code className="bg-green-100 px-2 py-1 rounded">{result.output_folder}</code>
+                </p>
+                <p className="text-xs text-green-600 mt-2">
+                  Compliant: {result.files.filter((f: any) => f.compliance_status === 'compliant').length} | 
+                  Non-compliant: {result.files.filter((f: any) => f.compliance_status === 'non_compliant').length}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  // ==================== END CLAIM GENERATOR COMPONENT ====================
+  
   // ==================== FINAL SUMMARY STATE ====================
   const [showFinalSummary, setShowFinalSummary] = useState(false);
   // ==================== END FINAL SUMMARY STATE ====================
@@ -212,6 +348,64 @@ export default function GLIFPrototype() {
     } finally {
       setLoadingFiles(false);
     }
+  }
+
+  // Load documents when corpus tab is active
+  useEffect(() => {
+    if (activeTab === 'corpus') {
+      loadDocuments();
+    }
+  }, [activeTab]);
+
+  async function loadDocuments() {
+    setLoadingDocuments(true);
+    try {
+      // Load claims (documents), playbooks (SOPs), and team checkpost files
+      const [documentsData, playbooksResponse, checkpostsResponse] = await Promise.all([
+        listDocuments({ docType: 'claim', limit: 100 }),
+        fetch('http://localhost:5002/api/audit-oversight/playbooks'),
+        fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+      ]);
+      
+      setDocuments(documentsData.documents || []);
+      
+      // Parse playbooks response
+      const playbooksData = await playbooksResponse.json();
+      if (playbooksData.success) {
+        setPlaybooks(playbooksData.playbooks || []);
+      } else {
+        console.error('Failed to load playbooks:', playbooksData.error);
+      }
+      
+      // Parse team checkpost files response
+      const checkpostsData = await checkpostsResponse.json();
+      if (checkpostsData.success) {
+        setTeamCheckpostFiles(checkpostsData.team_checkpost_files || []);
+      } else {
+        console.error('Failed to load team checkpost files:', checkpostsData.error);
+      }
+    } catch (err: any) {
+      console.error('Failed to load documents:', err);
+      setError(err.message || 'Failed to load documents');
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }
+
+  async function handleViewDocument(documentId: number, mode: 'document' | 'extractions') {
+    try {
+      const data = await getDocument(documentId);
+      setSelectedDocument(data.document);
+      setViewMode(mode);
+    } catch (err: any) {
+      console.error('Failed to load document:', err);
+      setError(err.message || 'Failed to load document');
+    }
+  }
+
+  function closeViewer() {
+    setSelectedDocument(null);
+    setViewMode(null);
   }
 
   async function handleStartAudit() {
@@ -489,6 +683,7 @@ export default function GLIFPrototype() {
           <TabButton id="claims" label="Claim Drilldown" icon={FileSearch} />
           <TabButton id="cost-analytics" label="Cost Analytics" icon={DollarSign} />
           <TabButton id="portfolio" label="Portfolio" icon={BarChart3} />
+          <TabButton id="audit-results" label="Audit Results" icon={ClipboardCheck} />
         </div>
 
         {/* Tab Content */}
@@ -554,6 +749,17 @@ export default function GLIFPrototype() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Claim Generator (Hidden from customers) */}
+            <Card className="border-2 border-orange-200 bg-orange-50">
+              <CardHeader>
+                <h2 className="text-xl font-semibold text-gray-900">Sample Claims Generator</h2>
+                <p className="text-sm text-gray-600 mt-1">Generate test claims from SOP (Internal Use Only)</p>
+              </CardHeader>
+              <CardContent>
+                <ClaimGenerator />
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -561,102 +767,239 @@ export default function GLIFPrototype() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900">Corpus Intelligence</h2>
-                <p className="text-sm text-gray-600 mt-1">AI-classified documents and extracted metadata</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Corpus Intelligence</h2>
+                    <p className="text-sm text-gray-600 mt-1">AI-classified documents and extracted metadata</p>
+                  </div>
+                  <button
+                    onClick={loadDocuments}
+                    disabled={loadingDocuments}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    {loadingDocuments ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Document</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Type</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Metadata</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Confidence</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { name: 'PolicyDoc_12345.pdf', type: 'Policy', meta: 'PolicyID: P9876', conf: 98 },
-                        { name: 'Claim_Application.docx', type: 'Claim', meta: 'ClaimID: C1234', conf: 95 },
-                        { name: 'Invoice_Oct2025.xlsx', type: 'Invoice', meta: 'Amount: $4,500', conf: 99 },
-                        { name: 'Coverage_Letter.pdf', type: 'Correspondence', meta: 'ClaimID: C1377', conf: 92 },
-                      ].map((doc, i) => (
-                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-sm text-gray-900">{doc.name}</td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                              {doc.type}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">{doc.meta}</td>
-                          <td className="py-3 px-4 text-sm text-gray-900">{doc.conf}%</td>
-                          <td className="py-3 px-4">
-                            <span className="flex items-center gap-1 text-sm text-green-600">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Processed
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Tab Switcher */}
+                <div className="flex gap-2 mb-6 border-b border-gray-200">
+                  <button
+                    onClick={() => setCorpusView('claims')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      corpusView === 'claims'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Claims ({documents.length})
+                  </button>
+                  <button
+                    onClick={() => setCorpusView('sops')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      corpusView === 'sops'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    SOPs ({playbooks.length})
+                  </button>
+                  <button
+                    onClick={() => setCorpusView('checkposts')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      corpusView === 'checkposts'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Checkposts ({teamCheckpostFiles.length})
+                  </button>
                 </div>
+
+                {loadingDocuments ? (
+                  <div className="text-center py-8 text-gray-500">Loading documents...</div>
+                ) : corpusView === 'claims' ? (
+                  documents.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No claims found. Upload claims to see them here.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Document</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Type</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Extraction</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {documents.map((doc) => (
+                            <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-900 font-medium">{doc.name}</td>
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                  {doc.document_type ? doc.document_type.charAt(0).toUpperCase() + doc.document_type.slice(1) : 'Claim'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                {doc.extracted_data || doc.has_extracted_data ? (
+                                  <span className="flex items-center gap-1 text-sm text-green-600">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Extracted
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-sm text-yellow-600">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    Pending
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {doc.total_cost ? `$${doc.total_cost.toFixed(4)}` : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleViewDocument(doc.id, 'document')}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="View Document"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View Document
+                                  </button>
+                                  {(doc.extracted_data || doc.has_extracted_data) && (
+                                    <button
+                                      onClick={() => handleViewDocument(doc.id, 'extractions')}
+                                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                      title="View Extractions"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      View Extractions
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : corpusView === 'sops' ? (
+                  playbooks.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No SOPs found. Upload SOPs to see them here.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">SOP Name</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Rules Count</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Status</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playbooks.map((playbook) => (
+                            <tr key={playbook.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-900 font-medium">{playbook.name}</td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {playbook.rules_count || (playbook.extracted_rules ? (Array.isArray(playbook.extracted_rules) ? playbook.extracted_rules.length : Object.keys(playbook.extracted_rules || {}).length) : 0)}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {playbook.uploaded_at ? new Date(playbook.uploaded_at).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                  playbook.status === 'active' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {playbook.status || 'active'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {playbook.total_cost ? `$${playbook.total_cost.toFixed(4)}` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : teamCheckpostFiles.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No checkpost files found. Upload checkposts to see them here.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkpost File</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkposts Count</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Linked SOP</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teamCheckpostFiles.map((file) => (
+                          <tr key={file.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm text-gray-900 font-medium">{file.name}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {file.checkposts_count || 0}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {file.created_at ? new Date(file.created_at).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              {file.linked_playbook ? (
+                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                  {file.linked_playbook}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-gray-400">Not linked</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {file.total_cost ? `$${file.total_cost.toFixed(4)}` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
 
+        {/* View Document Side Pane */}
+        {selectedDocument && viewMode === 'document' && (
+          <DocumentViewer
+            document={selectedDocument}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Extractions Modal */}
+        {selectedDocument && viewMode === 'extractions' && (
+          <ViewExtractions
+            document={selectedDocument}
+            onClose={closeViewer}
+          />
+        )}
+
         {activeTab === 'rules' && (
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Rules Engine</h2>
-                    <p className="text-sm text-gray-600 mt-1">15 active audit rules across policy types</p>
-                  </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <Plus className="w-4 h-4" />
-                    Add Rule
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { id: 'R1', name: 'Auto Premium vs Coverage Validation', type: 'Auto', severity: 'High' },
-                    { id: 'R2', name: 'Missing Property Details Check', type: 'Home', severity: 'Medium' },
-                    { id: 'R3', name: 'Travel Delay Exclusion Flag', type: 'Travel', severity: 'High' },
-                    { id: 'R4', name: 'Proof of Age Requirement', type: 'Auto', severity: 'High' },
-                    { id: 'R5', name: 'Payment Near Limit Alert', type: 'All', severity: 'Medium' },
-                  ].map(rule => (
-                    <div key={rule.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg font-semibold text-gray-700">
-                          {rule.id}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{rule.name}</p>
-                          <p className="text-sm text-gray-500">Type: {rule.type}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          rule.severity === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {rule.severity}
-                        </span>
-                        <button className="text-blue-600 hover:text-blue-800">
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <RulesEngineDashboard />
           </div>
         )}
 
@@ -756,39 +1099,12 @@ export default function GLIFPrototype() {
                 </CardContent>
               </Card>
             </div>
-             */}       
-            {/* EXISTING: High-Risk Claims Queue (unchanged) */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">High-Risk Claims Queue</h3>
-                <p className="text-sm text-gray-600 mt-1">Claims requiring immediate attention</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {MOCK_CLAIMS.filter(c => c.risk === 'high').map(claim => (
-                    <div key={claim.id} className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900">{claim.id} - {claim.claimant}</p>
-                          <p className="text-sm text-gray-600">{claim.type} • ${claim.amount.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedClaim(claim.id);
-                          setActiveTab('claims');
-                        }}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
-                      >
-                        Review
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+             */}
           </div>
+        )}
+        
+        {activeTab === 'audit-results' && (
+          <AuditResults />
         )}
         
         {activeTab === 'claims' && (

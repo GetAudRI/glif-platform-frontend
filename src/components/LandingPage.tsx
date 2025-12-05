@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
-    FileSearch, Car, FileText, DollarSign, ClipboardCheck,
+    FileSearch, FileText, DollarSign, ClipboardCheck,
     ArrowRight, Sparkles, CheckCircle2, Clock
 } from 'lucide-react';
 
@@ -19,7 +19,7 @@ interface UseCaseCard {
 const useCases: UseCaseCard[] = [
     {
         id: 'audit-oversight',
-        title: 'GLIF Audit Oversight',
+        title: 'GLIF Audit Oversight - Auto Claims',
         description: 'Comprehensive batch claim auditing with AI-powered portfolio analysis',
         icon: FileSearch,
         gradient: 'from-blue-600 to-blue-800',
@@ -31,21 +31,6 @@ const useCases: UseCaseCard[] = [
         ],
         status: 'active',
         route: '/audit-oversight'
-    },
-    {
-        id: 'auto-claims',
-        title: 'GLIF Auto Claims',
-        description: 'Automated claims validation against policy SOPs and standards',
-        icon: Car,
-        gradient: 'from-sky-500 to-blue-600',
-        features: [
-            'Claims validation',
-            'SOP management',
-            'Checkpost linking',
-            'Compliance tracking'
-        ],
-        status: 'active',
-        externalUrl: 'http://localhost:5002/rules-engine/auto-claims/'
     },
     {
         id: 'contract-review',
@@ -61,6 +46,21 @@ const useCases: UseCaseCard[] = [
         ],
         status: 'active',
         externalUrl: 'http://localhost:5002/rules-engine/contract-review/'
+    },
+    {
+        id: 'invoice-approval',
+        title: 'GLIF Invoice Approval',
+        description: 'Automated invoice validation against contract rules and compliance checking',
+        icon: DollarSign,
+        gradient: 'from-purple-500 to-indigo-600',
+        features: [
+            'Invoice validation against contracts',
+            'Automated compliance checking',
+            'Approval/rejection recommendations',
+            'Audit trail'
+        ],
+        status: 'active',
+        route: '/invoice-approval'
     },
     {
         id: 'loan-covenant',

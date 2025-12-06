@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus, Search, Clock, DollarSign, HardDrive } from 'lucide-react';
-import { listDocuments, uploadDocument } from './services/api';
+import { listDocuments, uploadDocument, listPolicyDeclarations, uploadPolicyDeclaration } from './services/api';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
 export default function SingleFileAudit() {
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Policy Declaration Selection State
+  const [policyDeclarationMode, setPolicyDeclarationMode] = useState<'upload' | 'select'>('select');
+  const [policyDeclarationFile, setPolicyDeclarationFile] = useState<File | null>(null);
+  const [existingPolicyDeclarations, setExistingPolicyDeclarations] = useState<any[]>([]);
+  const [selectedPolicyDeclarationId, setSelectedPolicyDeclarationId] = useState<number | null>(null);
+  const [selectedPolicyDeclarationName, setSelectedPolicyDeclarationName] = useState<string>('');
+  const [policyDeclarationLoading, setPolicyDeclarationLoading] = useState(false);
+  const [policyDeclarationData, setPolicyDeclarationData] = useState<any>(null);
+  const [policyDeclarationSearchQuery, setPolicyDeclarationSearchQuery] = useState('');
+  const [loadingPolicyDeclarations, setLoadingPolicyDeclarations] = useState(false);
 
   // SOP Selection State
   const [sopMode, setSopMode] = useState<'upload' | 'select'>('select');
@@ -53,15 +64,19 @@ export default function SingleFileAudit() {
   const [resultsFile, setResultsFile] = useState('');
 
   const steps = [
-    { number: 1, label: 'Select/Upload SOP', icon: '📄' },
-    { number: 2, label: 'Team Checkposts (Optional)', icon: '📋' },
-    { number: 3, label: 'Upload Claim', icon: '🚗' },
-    { number: 4, label: 'Validate', icon: '⚡' },
-    { number: 5, label: 'Results', icon: '📊' }
+    { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
+    { number: 2, label: 'Select/Upload SOP', icon: '📄' },
+    { number: 3, label: 'Team Checkposts (Optional)', icon: '📋' },
+    { number: 4, label: 'Upload Claim', icon: '🚗' },
+    { number: 5, label: 'Validate', icon: '⚡' },
+    { number: 6, label: 'Results', icon: '📊' }
   ];
 
-  // Load existing playbooks, checkposts, and claims on mount
+  // Load existing policy declarations, playbooks, checkposts, and claims on mount
   useEffect(() => {
+    // Fetch policy declarations
+    loadExistingPolicyDeclarations();
+
     // Fetch playbooks
     fetch('http://localhost:5002/api/audit-oversight/playbooks')
       .then(res => res.json())
@@ -82,9 +97,33 @@ export default function SingleFileAudit() {
       })
       .catch(err => console.error('Failed to load team checkpost files:', err));
     
-    // Load existing claims when component mounts or when entering step 3
+    // Load existing claims when component mounts or when entering step 4
     loadExistingClaims();
   }, []);
+
+  // Load existing policy declarations function
+  const loadExistingPolicyDeclarations = async () => {
+    setLoadingPolicyDeclarations(true);
+    try {
+      const data = await listPolicyDeclarations({
+        extractedOnly: true
+      });
+      if (data.success) {
+        setExistingPolicyDeclarations(data.policy_declarations || []);
+      }
+    } catch (err) {
+      console.error('Failed to load existing policy declarations:', err);
+    } finally {
+      setLoadingPolicyDeclarations(false);
+    }
+  };
+
+  // Filter policy declarations based on search query
+  const filteredPolicyDeclarations = existingPolicyDeclarations.filter((pd: any) => {
+    if (!policyDeclarationSearchQuery.trim()) return true;
+    const query = policyDeclarationSearchQuery.toLowerCase();
+    return pd.name?.toLowerCase().includes(query);
+  });
 
   // Load existing claims function
   const loadExistingClaims = async () => {
@@ -326,6 +365,48 @@ export default function SingleFileAudit() {
     }
   };
 
+  // Policy Declaration handlers
+  const handlePolicyDeclarationUpload = async (file: File) => {
+    setPolicyDeclarationFile(file);
+    setPolicyDeclarationLoading(true);
+    setError('');
+
+    try {
+      const data = await uploadPolicyDeclaration(file);
+
+      setSelectedPolicyDeclarationId(data.policy_declaration_id);
+      setSelectedPolicyDeclarationName(data.name);
+      setPolicyDeclarationData({
+        declarations_count: data.declarations_count,
+        total_cost: data.total_cost,
+        already_extracted: data.already_extracted
+      });
+      
+      if (data.already_extracted) {
+        console.log('✅ Policy Declaration already extracted - using cached data');
+      }
+      
+      // Reload policy declarations list
+      await loadExistingPolicyDeclarations();
+    } catch (err: any) {
+      console.error('Policy Declaration upload error:', err);
+      setError(err.message || 'Failed to process Policy Declaration');
+    } finally {
+      setPolicyDeclarationLoading(false);
+    }
+  };
+
+  const handleSelectExistingPolicyDeclaration = (pd: any) => {
+    setSelectedPolicyDeclarationId(pd.id);
+    setSelectedPolicyDeclarationName(pd.name);
+    setPolicyDeclarationData({
+      declarations_count: pd.declarations_count,
+      total_cost: pd.total_cost
+    });
+    setPolicyDeclarationFile(null);
+    console.log('✅ Selected existing Policy Declaration:', pd.name);
+  };
+
   const handleValidate = async () => {
     setValidateLoading(true);
     setError('');
@@ -348,6 +429,14 @@ export default function SingleFileAudit() {
       document_id: documentId,
       use_fast_validation: useFastValidation
     };
+    
+    // Include Policy Declaration ID if selected
+    if (selectedPolicyDeclarationId) {
+      requestBody.policy_declaration_id = selectedPolicyDeclarationId;
+      console.log('✅ Including Policy Declaration in validation:', selectedPolicyDeclarationId);
+    } else {
+      console.log('⚠️  No Policy Declaration selected (optional)');
+    }
     
     // Only include team_checkpost_file_id if one is selected
     if (selectedTeamCheckpostFileId) {
@@ -385,6 +474,8 @@ export default function SingleFileAudit() {
       // Store audit ID and show results
       setResults({
         audit_id: data.audit_id,
+        policy_declaration_name: data.policy_declaration_name || selectedPolicyDeclarationName,
+        policy_declarations_count: data.policy_declarations_count || 0,
         playbook_name: data.playbook_name || selectedPlaybookName || sopFile?.name,
         document_name: data.document_name || claimFile?.name,
         total_rules: data.total_rules,
@@ -400,6 +491,7 @@ export default function SingleFileAudit() {
         total_cost: data.total_cost || 0,
         playbook_cost: data.playbook_cost || 0,
         document_cost: data.document_cost || 0,
+        policy_declaration_cost: data.policy_declaration_cost || 0,
         total_tokens: data.total_tokens || 0,
         input_tokens: data.input_tokens || 0,
         output_tokens: data.output_tokens || 0,
@@ -408,7 +500,7 @@ export default function SingleFileAudit() {
         validation_timestamp: data.validation_timestamp
       });
 
-      setCurrentStep(5);
+      setCurrentStep(6);
     } catch (err: any) {
       setError(err.message || 'Validation failed');
     } finally {
@@ -465,11 +557,174 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 1: Select/Upload SOP */}
+      {/* Step 1: Select/Upload Policy Declaration */}
       {currentStep === 1 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 1: Select or Upload SOP 📄
+            Step 1: Select or Upload Policy Declaration 📋
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Choose an existing Policy Declaration from the database or upload a new one. AI will extract declarations.
+          </p>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-3 mb-6">
+            <button
+              onClick={() => setPolicyDeclarationMode('select')}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${policyDeclarationMode === 'select'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+            >
+              <List className="inline-block w-5 h-5 mr-2" />
+              Select Existing
+            </button>
+            <button
+              onClick={() => setPolicyDeclarationMode('upload')}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${policyDeclarationMode === 'upload'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+            >
+              <Plus className="inline-block w-5 h-5 mr-2" />
+              Upload New
+            </button>
+          </div>
+
+          {/* Select Existing Mode */}
+          {policyDeclarationMode === 'select' && (
+            <div>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search policy declarations..."
+                    value={policyDeclarationSearchQuery}
+                    onChange={(e) => setPolicyDeclarationSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {loadingPolicyDeclarations ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Loading policy declarations...</p>
+                </div>
+              ) : filteredPolicyDeclarations.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600">No policy declarations found.</p>
+                  <button
+                    onClick={() => setPolicyDeclarationMode('upload')}
+                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Upload Your First Policy Declaration
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredPolicyDeclarations.map((pd) => (
+                    <div
+                      key={pd.id}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedPolicyDeclarationId === pd.id
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                        }`}
+                      onClick={() => handleSelectExistingPolicyDeclaration(pd)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">{pd.name}</h4>
+                          <div className="flex gap-4 mt-2 text-sm text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {new Date(pd.uploaded_at).toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FileText className="w-4 h-4" />
+                              {pd.declarations_count || 0} declarations
+                            </span>
+                            {pd.total_cost && (
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="w-4 h-4" />
+                                ${pd.total_cost.toFixed(4)}
+                              </span>
+                            )}
+                            {pd.file_size_formatted && (
+                              <span className="flex items-center gap-1">
+                                <HardDrive className="w-4 h-4" />
+                                {pd.file_size_formatted}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedPolicyDeclarationId === pd.id && (
+                          <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Upload New Mode */}
+          {policyDeclarationMode === 'upload' && (
+            <div>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.docx,.doc"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePolicyDeclarationUpload(file);
+                  }}
+                  className="hidden"
+                  id="policy-declaration-upload"
+                />
+                <label
+                  htmlFor="policy-declaration-upload"
+                  className="cursor-pointer inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {policyDeclarationLoading ? 'Processing...' : 'Choose Policy Declaration File'}
+                </label>
+                <p className="text-sm text-gray-500 mt-2">PDF, TXT, DOCX, or DOC files</p>
+              </div>
+              {policyDeclarationFile && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    Selected: <span className="font-semibold">{policyDeclarationFile.name}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Next Button */}
+          <div className="mt-8 flex justify-end">
+            <button
+              onClick={() => {
+                if (selectedPolicyDeclarationId) {
+                  setCurrentStep(2);
+                } else {
+                  setError('Please select or upload a Policy Declaration first');
+                }
+              }}
+              disabled={!selectedPolicyDeclarationId && !policyDeclarationData}
+              className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Next: Select SOP →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Select/Upload SOP */}
+      {currentStep === 2 && (
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Step 2: Select or Upload SOP 📄
           </h2>
           <p className="text-gray-600 mb-6">
             Choose an existing SOP from the database or upload a new one. AI will extract validation rules.
@@ -602,7 +857,7 @@ export default function SingleFileAudit() {
 
               <div className="mt-6">
                 <button
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => setCurrentStep(3)}
                   className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
                   Next: Team Checkposts →
@@ -610,14 +865,33 @@ export default function SingleFileAudit() {
               </div>
             </>
           )}
+
+          {/* Navigation Buttons - Show when SOP is selected but preview not shown yet */}
+          {selectedPlaybookId && !sopData && !sopLoading && (
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => setCurrentStep(3)}
+                disabled={!selectedPlaybookId}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Next: Team Checkposts →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* Step 2: Team Checkposts (Optional) */}
-      {currentStep === 2 && (
+      {currentStep === 3 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 2: Team Checkposts (Optional) 📋
+            Step 3: Team Checkposts (Optional) 📋
           </h2>
           <p className="text-gray-600 mb-6">
             Add team-specific validation rules from a checklist, select existing checkposts, or skip this step.
@@ -781,13 +1055,13 @@ export default function SingleFileAudit() {
           {/* Navigation Buttons */}
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => setCurrentStep(1)}
+              onClick={() => setCurrentStep(2)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
               ← Back
             </button>
             <button
-              onClick={() => setCurrentStep(3)}
+              onClick={() => setCurrentStep(4)}
               disabled={checkpostMode === 'upload' && checkpostLoading}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-400"
             >
@@ -799,10 +1073,10 @@ export default function SingleFileAudit() {
 
 
       {/* Step 3: Upload/Select Claim */}
-      {currentStep === 3 && (
+      {currentStep === 4 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 3: Select or Upload Claim Document 🚗
+            Step 4: Select or Upload Claim Document 🚗
           </h2>
           <p className="text-gray-600 mb-6">
             Choose an existing extracted claim or upload a new one. Already extracted claims skip AI processing.
@@ -959,14 +1233,14 @@ export default function SingleFileAudit() {
           {/* Navigation Buttons */}
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => setCurrentStep(2)}
+              onClick={() => setCurrentStep(3)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
               ← Back
             </button>
             {claimData && !claimLoading && (
               <button
-                onClick={() => setCurrentStep(4)}
+                onClick={() => setCurrentStep(5)}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
                 Next: Validate →
@@ -977,12 +1251,24 @@ export default function SingleFileAudit() {
       )}
 
       {/* Step 4: Validate */}
-      {currentStep === 4 && (
+      {currentStep === 5 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 4: Run Validation ⚡</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 5: Run Validation ⚡</h2>
           <p className="text-gray-600 mb-6">Ready to validate the claim against extracted rules.</p>
 
           <div className="bg-blue-50 rounded-lg p-6 mb-6">
+            {selectedPolicyDeclarationId && (
+              <>
+                <div className="flex justify-between mb-3">
+                  <strong className="text-gray-900">Policy Declaration:</strong>
+                  <span className="text-gray-700">{selectedPolicyDeclarationName || 'Selected from Database'}</span>
+                </div>
+                <div className="flex justify-between mb-3">
+                  <strong className="text-gray-900">Policy Declarations Count:</strong>
+                  <span className="text-gray-700">{policyDeclarationData?.declarations_count || 0} declarations</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between mb-3">
               <strong className="text-gray-900">SOP Document:</strong>
               <span className="text-gray-700">{sopFile?.name || selectedPlaybookName || 'Selected from Database'}</span>
@@ -1100,7 +1386,7 @@ export default function SingleFileAudit() {
 
           <div className="flex gap-4">
             <button
-              onClick={() => setCurrentStep(3)}
+              onClick={() => setCurrentStep(4)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
               disabled={validateLoading}
             >
@@ -1118,7 +1404,7 @@ export default function SingleFileAudit() {
       )}
 
       {/* Step 5: Results */}
-      {currentStep === 5 && results && (
+      {currentStep === 6 && results && (
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-[350px_1fr] gap-8">
             {/* Left Sidebar */}
@@ -1198,6 +1484,30 @@ export default function SingleFileAudit() {
                       ${(results.total_cost || 0).toFixed(4)}
                     </span>
                   </div>
+                  {(results.policy_declaration_cost || 0) > 0 && (
+                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-500">Policy Declaration Cost</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        ${(results.policy_declaration_cost || 0).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                  {(results.playbook_cost || 0) > 0 && (
+                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-500">SOP Cost</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        ${(results.playbook_cost || 0).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                  {(results.document_cost || 0) > 0 && (
+                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-500">Claim Cost</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        ${(results.document_cost || 0).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center py-2 border-t border-gray-100">
                     <span className="text-sm text-gray-500">Tokens</span>
                     <span className="text-sm font-semibold text-gray-900">
@@ -1244,6 +1554,38 @@ export default function SingleFileAudit() {
 
             {/* Main Content */}
             <main className="flex flex-col">
+              {/* Validation Summary */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Validation Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {results.policy_declaration_name && (
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="text-sm text-gray-600 mb-1">Policy Declaration</div>
+                      <div className="font-semibold text-gray-900">{results.policy_declaration_name}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {results.policy_declarations_count || 0} declarations
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">SOP Document</div>
+                    <div className="font-semibold text-gray-900">{results.playbook_name}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {results.total_rules || 0} rules
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">Claim Document</div>
+                    <div className="font-semibold text-gray-900">{results.document_name}</div>
+                    {results.checkposts_count > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {results.checkposts_count} checkposts
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1">
                 {/* Tabs */}
                 <div className="border-b border-gray-200">

@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getRulesEngineDashboard, linkCheckpost, getPlaybook, getTeamCheckpostFile, deletePlaybook, deleteTeamCheckpostFile } from '../services/api';
-import { BookOpen, FileText, Link2, Plus, X, AlertCircle, ListChecks, CheckSquare, Trash2 } from 'lucide-react';
+import { getRulesEngineDashboard, linkCheckpost, getPlaybook, getTeamCheckpostFile, deletePlaybook, deleteTeamCheckpostFile, getPolicyDeclaration, deletePolicyDeclaration } from '../services/api';
+import { BookOpen, FileText, Link2, Plus, X, AlertCircle, ListChecks, CheckSquare, Trash2, Shield } from 'lucide-react';
+
+interface PolicyDeclaration {
+  id: number;
+  name: string;
+  created_at: string | null;
+  declarations_count: number;
+  file_type: string;
+}
 
 interface SOP {
   id: number;
@@ -24,14 +32,16 @@ interface TeamCheckpost {
 }
 
 export default function RulesEngineDashboard() {
+  const [policyDeclarations, setPolicyDeclarations] = useState<PolicyDeclaration[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
   const [teamCheckposts, setTeamCheckposts] = useState<TeamCheckpost[]>([]);
-  const [activeTab, setActiveTab] = useState<'sops' | 'checkposts'>('sops');
+  const [activeTab, setActiveTab] = useState<'policy_declarations' | 'sops' | 'checkposts'>('policy_declarations');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [checkpostsModalOpen, setCheckpostsModalOpen] = useState(false);
+  const [declarationsModalOpen, setDeclarationsModalOpen] = useState(false);
   const [selectedSop, setSelectedSop] = useState<{ id: number; name: string } | null>(null);
   const [selectedCheckpost, setSelectedCheckpost] = useState<number | ''>('');
   const [rulesLoading, setRulesLoading] = useState(false);
@@ -40,8 +50,11 @@ export default function RulesEngineDashboard() {
   const [checkpostsLoading, setCheckpostsLoading] = useState(false);
   const [checkpostsData, setCheckpostsData] = useState<any>(null);
   const [checkpostsError, setCheckpostsError] = useState<string | null>(null);
+  const [declarationsLoading, setDeclarationsLoading] = useState(false);
+  const [declarationsData, setDeclarationsData] = useState<any>(null);
+  const [declarationsError, setDeclarationsError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ type: 'playbook' | 'checkpost'; id: number; name: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'playbook' | 'checkpost' | 'policy_declaration'; id: number; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -53,6 +66,7 @@ export default function RulesEngineDashboard() {
       setLoading(true);
       setError(null);
       const data = await getRulesEngineDashboard();
+      setPolicyDeclarations(data.policy_declarations || []);
       setSops(data.sops || []);
       setTeamCheckposts(data.team_checkposts || []);
     } catch (err) {
@@ -189,7 +203,27 @@ export default function RulesEngineDashboard() {
     }
   };
 
-  const handleDeleteClick = (type: 'playbook' | 'checkpost', id: number, name: string) => {
+  const handleViewDeclarations = async (policyDeclaration: PolicyDeclaration) => {
+    setDeclarationsModalOpen(true);
+    setDeclarationsLoading(true);
+    setDeclarationsError(null);
+    setDeclarationsData(null);
+
+    try {
+      const response = await getPolicyDeclaration(policyDeclaration.id);
+      setDeclarationsData({
+        name: response.policy_declaration.name,
+        declarations: response.policy_declaration.extracted_declarations || []
+      });
+    } catch (err) {
+      setDeclarationsError(err instanceof Error ? err.message : 'Failed to load declarations');
+      console.error('Error loading declarations:', err);
+    } finally {
+      setDeclarationsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (type: 'playbook' | 'checkpost' | 'policy_declaration', id: number, name: string) => {
     setItemToDelete({ type, id, name });
     setDeleteConfirmOpen(true);
   };
@@ -201,8 +235,10 @@ export default function RulesEngineDashboard() {
     try {
       if (itemToDelete.type === 'playbook') {
         await deletePlaybook(itemToDelete.id);
-      } else {
+      } else if (itemToDelete.type === 'checkpost') {
         await deleteTeamCheckpostFile(itemToDelete.id);
+      } else if (itemToDelete.type === 'policy_declaration') {
+        await deletePolicyDeclaration(itemToDelete.id);
       }
       
       // Close modal and reload dashboard
@@ -210,7 +246,8 @@ export default function RulesEngineDashboard() {
       setItemToDelete(null);
       await loadDashboard();
       
-      alert(`Successfully deleted ${itemToDelete.type === 'playbook' ? 'playbook' : 'team checkpost file'}!`);
+      const typeName = itemToDelete.type === 'playbook' ? 'playbook' : itemToDelete.type === 'checkpost' ? 'team checkpost file' : 'policy declaration';
+      alert(`Successfully deleted ${typeName}!`);
     } catch (err) {
       alert('Error: ' + (err instanceof Error ? err.message : 'Failed to delete'));
       console.error('Error deleting:', err);
@@ -260,7 +297,7 @@ export default function RulesEngineDashboard() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Rules Engine Dashboard</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Manage your Standard Operating Procedures (SOPs) and Team Checkposts
+            Manage your Policy Declarations, Standard Operating Procedures (SOPs), and Team Checkposts
           </p>
         </div>
         <button
@@ -274,6 +311,17 @@ export default function RulesEngineDashboard() {
       {/* Tabs */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="flex border-b border-gray-200 bg-gray-50">
+          <button
+            onClick={() => setActiveTab('policy_declarations')}
+            className={`px-6 py-3 font-semibold text-sm transition-colors ${
+              activeTab === 'policy_declarations'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Shield className="w-4 h-4 inline-block mr-2" />
+            Policy Declarations ({policyDeclarations.length})
+          </button>
           <button
             onClick={() => setActiveTab('sops')}
             className={`px-6 py-3 font-semibold text-sm transition-colors ${
@@ -297,6 +345,72 @@ export default function RulesEngineDashboard() {
             Team Checkposts ({teamCheckposts.length})
           </button>
         </div>
+
+        {/* Policy Declarations Tab Content */}
+        {activeTab === 'policy_declarations' && (
+          <div className="p-6">
+            {policyDeclarations.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Policy Declaration Name</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Uploaded Date</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Declarations</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">File Type</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {policyDeclarations.map((pd) => (
+                      <tr key={pd.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-4">
+                          <div className="font-semibold text-gray-900">{pd.name}</div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-600">
+                          {formatDate(pd.created_at)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => handleViewDeclarations(pd)}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 hover:bg-green-200 transition-colors cursor-pointer"
+                            title="View all declarations"
+                          >
+                            <ListChecks className="w-3 h-3" />
+                            {pd.declarations_count} Declarations
+                          </button>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="text-sm text-gray-600 uppercase">{pd.file_type}</span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => handleDeleteClick('policy_declaration', pd.id, pd.name)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50"
+                            title="Delete policy declaration"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Policy Declarations</h3>
+                <p className="text-sm text-gray-600 mb-4">Upload a Policy Declaration document to start extracting declarations.</p>
+                <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Plus className="w-4 h-4" />
+                  Upload Policy Declaration
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* SOPs Tab Content */}
         {activeTab === 'sops' && (
@@ -725,6 +839,113 @@ export default function RulesEngineDashboard() {
         </div>
       )}
 
+      {/* Declarations Modal */}
+      {declarationsModalOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setDeclarationsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Declarations for {declarationsData?.name || 'Policy Declaration'}
+              </h3>
+              <button
+                onClick={() => setDeclarationsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
+              {declarationsLoading ? (
+                <div className="flex items-center justify-center p-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading declarations...</p>
+                  </div>
+                </div>
+              ) : declarationsError ? (
+                <div className="p-6 text-center">
+                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600">{declarationsError}</p>
+                </div>
+              ) : declarationsData && declarationsData.declarations ? (
+                <div className="p-4">
+                  {(() => {
+                    const formattedDeclarations = formatRulesForDisplay(declarationsData.declarations);
+                    return formattedDeclarations.length > 0 ? (
+                      <div className="space-y-3">
+                        {formattedDeclarations.map((declaration, idx) => (
+                          <div
+                            key={idx}
+                            className="p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-xs font-semibold">
+                                {idx + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                {declaration.category && (
+                                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase">
+                                    {declaration.category}
+                                  </div>
+                                )}
+                                <div className="text-sm text-gray-900">{declaration.text}</div>
+                                {declaration.severity && (
+                                  <div className="mt-2">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                        declaration.severity === 'critical'
+                                          ? 'bg-red-100 text-red-800'
+                                          : declaration.severity === 'high'
+                                          ? 'bg-orange-100 text-orange-800'
+                                          : declaration.severity === 'medium'
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : 'bg-gray-100 text-gray-800'
+                                      }`}
+                                    >
+                                      {declaration.severity}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-12 text-gray-500">
+                        <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p>No declarations found in this Policy Declaration</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center p-12 text-gray-500">
+                  <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p>No declarations data available</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setDeclarationsModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirmOpen && itemToDelete && (
         <div
@@ -748,7 +969,7 @@ export default function RulesEngineDashboard() {
 
             <div className="mb-6">
               <p className="text-sm text-gray-600 mb-2">
-                Are you sure you want to delete this {itemToDelete.type === 'playbook' ? 'playbook' : 'team checkpost file'}?
+                Are you sure you want to delete this {itemToDelete.type === 'playbook' ? 'playbook' : itemToDelete.type === 'checkpost' ? 'team checkpost file' : 'policy declaration'}?
               </p>
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <p className="font-semibold text-red-900">{itemToDelete.name}</p>

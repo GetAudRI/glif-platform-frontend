@@ -252,21 +252,122 @@ export async function deleteTeamCheckpostFile(teamCheckpostFileId: number) {
   try {
     const response = await fetch(`${API_BASE}/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`, {
       method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
     });
     const data = await response.json();
-    
     if (!data.success) {
       throw new Error(data.error || 'Failed to delete team checkpost file');
     }
-    
     return data;
   } catch (error) {
-    console.error('Failed to delete team checkpost file:', error);
+    console.error('Error deleting team checkpost file:', error);
     throw error;
   }
 }
 
 // ==================== END RULES ENGINE DASHBOARD API ====================
+
+// ==================== POLICY DECLARATIONS API ====================
+
+/**
+ * List all Policy Declarations
+ */
+export async function listPolicyDeclarations(options?: {
+  search?: string;
+  extractedOnly?: boolean;
+}) {
+  try {
+    const params = new URLSearchParams();
+    if (options?.search) {
+      params.append('search', options.search);
+    }
+    if (options?.extractedOnly) {
+      params.append('extracted_only', 'true');
+    }
+    
+    const url = `${API_BASE}/api/audit-oversight/policy-declarations${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to list policy declarations');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error listing policy declarations:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get specific Policy Declaration
+ */
+export async function getPolicyDeclaration(policyDeclarationId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`);
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to get policy declaration');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error getting policy declaration:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload Policy Declaration file and extract declarations
+ */
+export async function uploadPolicyDeclaration(file: File) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to upload policy declaration');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error uploading policy declaration:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete Policy Declaration
+ */
+export async function deletePolicyDeclaration(policyDeclarationId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`, {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete policy declaration');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error deleting policy declaration:', error);
+    throw error;
+  }
+}
+
+// ==================== END POLICY DECLARATIONS API ====================
 
 // ==================== INVOICE APPROVAL API ====================
 

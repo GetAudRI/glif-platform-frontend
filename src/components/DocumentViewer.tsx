@@ -17,7 +17,17 @@ export default function DocumentViewer({ document, onClose }: DocumentViewerProp
   if (!document) return null;
 
   const API_BASE = 'http://localhost:5002';
-  const fileUrl = `${API_BASE}/api/audit-oversight/documents/${document.id}/file`;
+  // Determine the correct file endpoint based on document type
+  let fileUrl: string;
+  if (document.document_type === 'playbook') {
+    fileUrl = `${API_BASE}/api/audit-oversight/playbooks/${document.id}/file`;
+  } else if (document.document_type === 'policy_declaration') {
+    fileUrl = `${API_BASE}/api/audit-oversight/policy-declarations/${document.id}/file`;
+  } else if (document.document_type === 'team_checkpost') {
+    fileUrl = `${API_BASE}/api/audit-oversight/team-checkposts/${document.id}/file`;
+  } else {
+    fileUrl = `${API_BASE}/api/audit-oversight/documents/${document.id}/file`;
+  }
   
   // Determine file type from extension
   const getFileType = (filename: string) => {

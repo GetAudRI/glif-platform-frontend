@@ -14,7 +14,9 @@ import {
   startValidation, getValidationResults,  // DAY 4: Added validation imports
   saveRulesToJSON,  // MANUAL SAVE: Added save rules function
   listDocuments, getDocument,  // DOCUMENTS: Added document functions
-  generateClaimsFromSOP  // CLAIM GENERATION: Added claim generation function
+  generateClaimsFromSOP,  // CLAIM GENERATION: Added claim generation function
+  listPolicyDeclarations, getPolicyDeclaration,  // POLICY DECLARATIONS: Added policy declaration functions
+  getTeamCheckpostFile  // TEAM CHECKPOSTS: Added team checkpost file function
 } from './services/api';
 import SingleFileAudit from './SingleFileAudit';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
@@ -172,10 +174,13 @@ export default function GLIFPrototype() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [teamCheckpostFiles, setTeamCheckpostFiles] = useState<any[]>([]);
+  const [policyDeclarations, setPolicyDeclarations] = useState<any[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
+  const [selectedPolicyDeclaration, setSelectedPolicyDeclaration] = useState<any | null>(null);
+  const [selectedTeamCheckpostFile, setSelectedTeamCheckpostFile] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'document' | 'extractions' | null>(null);
-  const [corpusView, setCorpusView] = useState<'claims' | 'sops' | 'checkposts'>('claims');
+  const [corpusView, setCorpusView] = useState<'claims' | 'sops' | 'checkposts' | 'policies'>('claims');
   // ==================== END CORPUS TAB STATE ====================
   
   // ==================== CLAIM GENERATOR COMPONENT ====================
@@ -360,11 +365,12 @@ export default function GLIFPrototype() {
   async function loadDocuments() {
     setLoadingDocuments(true);
     try {
-      // Load claims (documents), playbooks (SOPs), and team checkpost files
-      const [documentsData, playbooksResponse, checkpostsResponse] = await Promise.all([
+      // Load claims (documents), playbooks (SOPs), team checkpost files, and policy declarations
+      const [documentsData, playbooksResponse, checkpostsResponse, policyDeclarationsData] = await Promise.all([
         listDocuments({ docType: 'claim', limit: 100 }),
         fetch('http://localhost:5002/api/audit-oversight/playbooks'),
-        fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+        fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true'),
+        listPolicyDeclarations()
       ]);
       
       setDocuments(documentsData.documents || []);
@@ -384,6 +390,13 @@ export default function GLIFPrototype() {
       } else {
         console.error('Failed to load team checkpost files:', checkpostsData.error);
       }
+      
+      // Parse policy declarations response
+      if (policyDeclarationsData.success) {
+        setPolicyDeclarations(policyDeclarationsData.policy_declarations || []);
+      } else {
+        console.error('Failed to load policy declarations:', policyDeclarationsData.error);
+      }
     } catch (err: any) {
       console.error('Failed to load documents:', err);
       setError(err.message || 'Failed to load documents');
@@ -396,6 +409,7 @@ export default function GLIFPrototype() {
     try {
       const data = await getDocument(documentId);
       setSelectedDocument(data.document);
+      setSelectedPolicyDeclaration(null);
       setViewMode(mode);
     } catch (err: any) {
       console.error('Failed to load document:', err);
@@ -403,8 +417,86 @@ export default function GLIFPrototype() {
     }
   }
 
+  async function handleViewPlaybook(playbookId: number, mode: 'document' | 'extractions') {
+    try {
+      // Find playbook in the list
+      const playbook = playbooks.find(p => p.id === playbookId);
+      if (!playbook) {
+        setError('Playbook not found');
+        return;
+      }
+      
+      // Create a document-like object for the viewer
+      const playbookDoc = {
+        id: playbook.id,
+        name: playbook.name,
+        document_type: 'playbook',
+        file_path: playbook.file_path,
+        extracted_data: playbook.extracted_rules,
+        ai_model_used: playbook.ai_model_used,
+        input_tokens: playbook.input_tokens,
+        output_tokens: playbook.output_tokens,
+        total_cost: playbook.total_cost,
+        processing_time: playbook.processing_time,
+        has_extracted_data: playbook.extracted_rules !== null
+      };
+      
+      setSelectedDocument(playbookDoc);
+      setSelectedPolicyDeclaration(null);
+      setViewMode(mode);
+    } catch (err: any) {
+      console.error('Failed to load playbook:', err);
+      setError(err.message || 'Failed to load playbook');
+    }
+  }
+
+  async function handleViewPolicyDeclaration(policyDeclarationId: number, mode: 'document' | 'extractions') {
+    try {
+      const data = await getPolicyDeclaration(policyDeclarationId);
+      setSelectedPolicyDeclaration(data.policy_declaration);
+      setSelectedDocument(null);
+      setSelectedTeamCheckpostFile(null);
+      setViewMode(mode);
+    } catch (err: any) {
+      console.error('Failed to load policy declaration:', err);
+      setError(err.message || 'Failed to load policy declaration');
+    }
+  }
+
+  async function handleViewTeamCheckpostFile(teamCheckpostFileId: number, mode: 'document' | 'extractions') {
+    try {
+      const teamCheckpostFile = await getTeamCheckpostFile(teamCheckpostFileId);
+      
+      // Create a document-like object for the viewer
+      const checkpostDoc = {
+        id: teamCheckpostFile.id,
+        name: teamCheckpostFile.name,
+        document_type: 'team_checkpost',
+        file_path: teamCheckpostFile.file_path,
+        extracted_data: teamCheckpostFile.checkposts_data,
+        ai_model_used: teamCheckpostFile.ai_model_used,
+        input_tokens: teamCheckpostFile.input_tokens,
+        output_tokens: teamCheckpostFile.output_tokens,
+        total_cost: teamCheckpostFile.total_cost,
+        processing_time: teamCheckpostFile.processing_time,
+        has_extracted_data: teamCheckpostFile.checkposts_data !== null && teamCheckpostFile.checkposts_data.length > 0,
+        uploaded_at: teamCheckpostFile.created_at
+      };
+      
+      setSelectedTeamCheckpostFile(checkpostDoc);
+      setSelectedDocument(null);
+      setSelectedPolicyDeclaration(null);
+      setViewMode(mode);
+    } catch (err: any) {
+      console.error('Failed to load team checkpost file:', err);
+      setError(err.message || 'Failed to load team checkpost file');
+    }
+  }
+
   function closeViewer() {
     setSelectedDocument(null);
+    setSelectedPolicyDeclaration(null);
+    setSelectedTeamCheckpostFile(null);
     setViewMode(null);
   }
 
@@ -525,11 +617,11 @@ export default function GLIFPrototype() {
   // Load files when audit tab is clicked
   useEffect(() => {
     if (auditStarted && availableClaims.length === 0) {
-      loadFiles();
+      loadAuditFiles();
     }
   }, [auditStarted]);
 
-  async function loadFiles() {
+  async function loadAuditFiles() {
     setLoadingFiles(true);
     setError('');
     try {
@@ -815,6 +907,16 @@ export default function GLIFPrototype() {
                   >
                     Checkposts ({teamCheckpostFiles.length})
                   </button>
+                  <button
+                    onClick={() => setCorpusView('policies')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      corpusView === 'policies'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Policies ({policyDeclarations.length})
+                  </button>
                 </div>
 
                 {loadingDocuments ? (
@@ -904,6 +1006,7 @@ export default function GLIFPrototype() {
                             <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
                             <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Status</th>
                             <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -928,47 +1031,182 @@ export default function GLIFPrototype() {
                               <td className="py-3 px-4 text-sm text-gray-900">
                                 {playbook.total_cost ? `$${playbook.total_cost.toFixed(4)}` : '-'}
                               </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleViewPlaybook(playbook.id, 'document')}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="View Document"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View Document
+                                  </button>
+                                  {playbook.extracted_rules && (
+                                    <button
+                                      onClick={() => handleViewPlaybook(playbook.id, 'extractions')}
+                                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                      title="View Extractions"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      View Extractions
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )
-                ) : teamCheckpostFiles.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">No checkpost files found. Upload checkposts to see them here.</div>
+                ) : corpusView === 'checkposts' ? (
+                  teamCheckpostFiles.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No checkpost files found. Upload checkposts to see them here.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkpost File</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkposts Count</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Extraction</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Linked SOP</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamCheckpostFiles.map((file) => (
+                            <tr key={file.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-900 font-medium">{file.name}</td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {file.checkposts_count || 0}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {file.created_at ? new Date(file.created_at).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                {file.checkposts_data && file.checkposts_data.length > 0 ? (
+                                  <span className="flex items-center gap-1 text-sm text-green-600">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Extracted
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-sm text-yellow-600">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    Pending
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                {file.linked_playbook ? (
+                                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                    {file.linked_playbook}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">Not linked</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {file.total_cost ? `$${file.total_cost.toFixed(4)}` : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleViewTeamCheckpostFile(file.id, 'document')}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="View Document"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View Document
+                                  </button>
+                                  {file.checkposts_data && file.checkposts_data.length > 0 && (
+                                    <button
+                                      onClick={() => handleViewTeamCheckpostFile(file.id, 'extractions')}
+                                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                      title="View Extractions"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      View Extractions
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : policyDeclarations.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No policy declarations found. Upload policy declarations to see them here.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkpost File</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Checkposts Count</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Document</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Type</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Uploaded</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Linked SOP</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Extraction</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Declarations</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Cost</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {teamCheckpostFiles.map((file) => (
-                          <tr key={file.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm text-gray-900 font-medium">{file.name}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {file.checkposts_count || 0}
+                        {policyDeclarations.map((pd) => (
+                          <tr key={pd.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm text-gray-900 font-medium">{pd.name}</td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                                Policy Declaration
+                              </span>
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-600">
-                              {file.created_at ? new Date(file.created_at).toLocaleDateString() : '-'}
+                              {pd.uploaded_at ? new Date(pd.uploaded_at).toLocaleDateString() : '-'}
                             </td>
                             <td className="py-3 px-4">
-                              {file.linked_playbook ? (
-                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                                  {file.linked_playbook}
+                              {pd.extracted_declarations || pd.has_extracted_declarations ? (
+                                <span className="flex items-center gap-1 text-sm text-green-600">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  Extracted
                                 </span>
                               ) : (
-                                <span className="text-sm text-gray-400">Not linked</span>
+                                <span className="flex items-center gap-1 text-sm text-yellow-600">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  Pending
+                                </span>
                               )}
                             </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {pd.declarations_count || 0}
+                            </td>
                             <td className="py-3 px-4 text-sm text-gray-900">
-                              {file.total_cost ? `$${file.total_cost.toFixed(4)}` : '-'}
+                              {pd.total_cost ? `$${pd.total_cost.toFixed(4)}` : '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleViewPolicyDeclaration(pd.id, 'document')}
+                                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                  title="View Document"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  View Document
+                                </button>
+                                {(pd.extracted_declarations || pd.has_extracted_declarations) && (
+                                  <button
+                                    onClick={() => handleViewPolicyDeclaration(pd.id, 'extractions')}
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="View Extractions"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View Extractions
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -989,10 +1227,75 @@ export default function GLIFPrototype() {
           />
         )}
 
+        {/* View Policy Declaration Document */}
+        {selectedPolicyDeclaration && viewMode === 'document' && (
+          <DocumentViewer
+            document={{
+              id: selectedPolicyDeclaration.id,
+              name: selectedPolicyDeclaration.name,
+              document_type: 'policy_declaration',
+              file_path: selectedPolicyDeclaration.file_path
+            }}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Playbook Document */}
+        {selectedDocument && viewMode === 'document' && selectedDocument.document_type === 'playbook' && (
+          <DocumentViewer
+            document={selectedDocument}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Playbook Extractions */}
+        {selectedDocument && viewMode === 'extractions' && selectedDocument.document_type === 'playbook' && (
+          <ViewExtractions
+            document={selectedDocument}
+            onClose={closeViewer}
+          />
+        )}
+
         {/* View Extractions Modal */}
         {selectedDocument && viewMode === 'extractions' && (
           <ViewExtractions
             document={selectedDocument}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Policy Declaration Extractions */}
+        {selectedPolicyDeclaration && viewMode === 'extractions' && (
+          <ViewExtractions
+            document={{
+              id: selectedPolicyDeclaration.id,
+              name: selectedPolicyDeclaration.name,
+              document_type: 'policy_declaration',
+              uploaded_at: selectedPolicyDeclaration.uploaded_at,
+              extracted_data: selectedPolicyDeclaration.extracted_declarations,
+              ai_model_used: selectedPolicyDeclaration.ai_model_used,
+              input_tokens: selectedPolicyDeclaration.input_tokens,
+              output_tokens: selectedPolicyDeclaration.output_tokens,
+              total_cost: selectedPolicyDeclaration.total_cost,
+              processing_time: selectedPolicyDeclaration.processing_time,
+              has_extracted_data: selectedPolicyDeclaration.extracted_declarations !== null
+            }}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Team Checkpost File Document */}
+        {selectedTeamCheckpostFile && viewMode === 'document' && (
+          <DocumentViewer
+            document={selectedTeamCheckpostFile}
+            onClose={closeViewer}
+          />
+        )}
+
+        {/* View Team Checkpost File Extractions */}
+        {selectedTeamCheckpostFile && viewMode === 'extractions' && (
+          <ViewExtractions
+            document={selectedTeamCheckpostFile}
             onClose={closeViewer}
           />
         )}
@@ -2528,8 +2831,6 @@ export default function GLIFPrototype() {
       {/* DAY 5: Drill-Down Modal - Shows detailed rule checks for selected claim */}
       {showDrillDown && drillDownClaim && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          {/* Debug: Log render */}
-          {console.log('🎯 Modal rendering with claim:', drillDownClaim)}
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">

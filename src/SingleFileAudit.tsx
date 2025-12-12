@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus, Search, Clock, DollarSign, HardDrive } from 'lucide-react';
-import { listDocuments, uploadDocument, listPolicyDeclarations, uploadPolicyDeclaration } from './services/api';
+import { 
+  listDocuments, 
+  uploadDocument, 
+  listPolicyDeclarations, 
+  uploadPolicyDeclaration,
+  getPolicyDeclaration,
+  getPlaybook,
+  getTeamCheckpostFile
+} from './services/api';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
@@ -62,6 +70,10 @@ export default function SingleFileAudit() {
   const [error, setError] = useState('');
   const [csvFile, setCsvFile] = useState('');
   const [resultsFile, setResultsFile] = useState('');
+  const [rulesTab, setRulesTab] = useState<'All' | 'Policy Declarations' | 'SOP Rules' | 'Team Checkposts'>('All');
+  const [policyDetails, setPolicyDetails] = useState<any>(null);
+  const [playbookDetails, setPlaybookDetails] = useState<any>(null);
+  const [teamCheckpostDetails, setTeamCheckpostDetails] = useState<any>(null);
 
   const steps = [
     { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
@@ -100,6 +112,29 @@ export default function SingleFileAudit() {
     // Load existing claims when component mounts or when entering step 4
     loadExistingClaims();
   }, []);
+
+  // Load rich details when selections change
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        if (selectedPolicyDeclarationId) {
+          const data = await getPolicyDeclaration(selectedPolicyDeclarationId);
+          setPolicyDetails(data?.policy_declaration || data);
+        }
+        if (selectedPlaybookId) {
+          const pb = await getPlaybook(selectedPlaybookId);
+          setPlaybookDetails(pb);
+        }
+        if (selectedTeamCheckpostFileId) {
+          const tc = await getTeamCheckpostFile(selectedTeamCheckpostFileId);
+          setTeamCheckpostDetails(tc);
+        }
+      } catch (err) {
+        console.error('Failed to fetch detail data:', err);
+      }
+    };
+    fetchDetails();
+  }, [selectedPolicyDeclarationId, selectedPlaybookId, selectedTeamCheckpostFileId]);
 
   // Load existing policy declarations function
   const loadExistingPolicyDeclarations = async () => {
@@ -1404,246 +1439,416 @@ export default function SingleFileAudit() {
       )}
 
       {/* Step 5: Results */}
-      {currentStep === 6 && results && (
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-[350px_1fr] gap-8">
-            {/* Left Sidebar */}
-            <aside className="flex flex-col gap-6">
-              {/* Status Card */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-8 text-center">
-                  <div className="text-5xl mb-4">
+      {currentStep === 6 && results && (() => {
+        const ruleChecks = results.rule_checks || [];
+        const baseRules = ruleChecks.length;
+        const passedCount = ruleChecks.filter((c: any) => c.status === 'PASS').length;
+        const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length || results.errors?.length || 0;
+        const warningCount = ruleChecks.filter((c: any) => c.status === 'WARNING').length || results.warnings?.length || 0;
+        const complianceScore = results.confidence_score !== undefined
+          ? results.confidence_score
+          : baseRules
+            ? Math.round((passedCount / baseRules) * 100)
+            : 85;
+
+        const formatCurrency = (val: number) => `$${(val || 0).toFixed(4)}`;
+        const formatDate = (val: any) => val ? new Date(val).toLocaleString() : new Date().toLocaleString();
+
+        const categorizeRule = (check: any) => {
+          const type = (check?.category || check?.type || check?.rule_type || check?.source || '').toLowerCase();
+          if (type.includes('policy')) return 'Policy Declarations';
+          if (type.includes('checkpost')) return 'Team Checkposts';
+          if (type.includes('sop') || type.includes('rule')) return 'SOP Rules';
+          return 'Other';
+        };
+
+        const categoryOrder: Array<'Policy Declarations' | 'SOP Rules' | 'Team Checkposts' | 'Other'> = [
+          'Policy Declarations',
+          'SOP Rules',
+          'Team Checkposts',
+          'Other'
+        ];
+
+        const buildFallbackRules = (items: any[], category: string) => {
+          if (!items || !items.length) return [];
+          return items.map((r: any, idx: number) => {
+            const text = r?.rule || r?.title || r?.name || r?.description || r?.text || r?.content || r;
+            const details = r?.details || r?.explanation || r?.summary || '';
+            return {
+              rule: typeof text === 'string' ? text : JSON.stringify(text),
+              details: typeof details === 'string' ? details : (details ? JSON.stringify(details) : ''),
+              status: 'N/A',
+              category,
+              fallbackId: `${category}-${idx}`
+            };
+          });
+        };
+
+        const policyFallback = buildFallbackRules(
+          policyDetails?.declarations || policyDetails?.extracted_declarations || [],
+          'Policy Declarations'
+        );
+        const sopFallback = buildFallbackRules(
+          (playbookDetails?.extracted_rules) || sopData || [],
+          'SOP Rules'
+        );
+        const checkpostFallback = buildFallbackRules(
+          teamCheckpostDetails?.checkposts || [],
+          'Team Checkposts'
+        );
+
+        const combinedRules = [
+          ...(ruleChecks || []),
+          ...policyFallback,
+          ...sopFallback,
+          ...checkpostFallback
+        ];
+
+        const totalRules = combinedRules.length || baseRules;
+
+        const getCategoryStats = (cat: string) => {
+          const items = combinedRules.filter((c: any) => categorizeRule(c) === cat);
+          return {
+            total: items.length,
+            pass: items.filter((c: any) => c.status === 'PASS').length,
+            fail: items.filter((c: any) => c.status === 'FAIL').length,
+            warn: items.filter((c: any) => c.status === 'WARNING').length
+          };
+        };
+
+        const groupedRules = categoryOrder.map((cat) => ({
+          category: cat,
+          items: combinedRules.filter((c: any) => categorizeRule(c) === cat),
+          stats: getCategoryStats(cat)
+        }));
+
+        const tabTotal = (tab: 'All' | 'Policy Declarations' | 'SOP Rules' | 'Team Checkposts') => {
+          if (tab === 'All') return totalRules;
+          return getCategoryStats(tab).total;
+        };
+
+        const ruleIcon = (status?: string) => {
+          if (status === 'PASS') return '✅';
+          if (status === 'FAIL') return '❌';
+          if (status === 'WARNING') return '⚠️';
+          return 'ℹ️';
+        };
+
+        const pillClass = (status?: string) => {
+          if (status === 'PASS') return 'bg-green-100 text-green-800';
+          if (status === 'FAIL') return 'bg-red-100 text-red-800';
+          if (status === 'WARNING') return 'bg-yellow-100 text-yellow-800';
+          return 'bg-gray-100 text-gray-700';
+        };
+
+        const categoryBadge = (category: string) => {
+          if (category === 'Policy Declarations') return 'text-blue-700';
+          if (category === 'SOP Rules') return 'text-green-700';
+          if (category === 'Team Checkposts') return 'text-purple-700';
+          return 'text-gray-700';
+        };
+
+        return (
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Top Summary Banner */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-8 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="text-6xl">
                     {results.is_valid ? '✅' : '❌'}
                   </div>
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-2 ${
-                    results.is_valid 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {results.is_valid ? 'APPROVED' : 'REJECTED'}
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">Claim Validation Complete</h1>
+                    <p className="text-blue-100 text-lg">
+                      Claim ID: {results.claim_id || results.document_name || 'Unknown'}
+                    </p>
                   </div>
-                  <div className="text-sm text-gray-500 font-mono mt-2">
-                    Claim ID: {results.claim_id || 'Unknown'}
-                  </div>
-                  
-                  <div className="mt-6 space-y-3 text-left">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-500">Total Checks</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {results.rule_checks?.length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-500">Passed</span>
-                      <span className="text-sm font-semibold text-green-600">
-                        {results.rule_checks?.filter((c: any) => c.status === 'PASS').length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-sm text-gray-500">Failed</span>
-                      <span className="text-sm font-semibold text-red-600">
-                        {results.errors?.length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm text-gray-500">Warnings</span>
-                      <span className="text-sm font-semibold text-yellow-600">
-                        {results.warnings?.length || 0}
-                      </span>
-                    </div>
-                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-5xl font-bold mb-1">{complianceScore}%</div>
+                  <div className="text-blue-100 text-sm">Compliance Score</div>
                 </div>
               </div>
 
-              {/* AI Analysis Card */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-700">🤖 AI Analysis</span>
-                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
-                    {results.ai_model || 'claude-3.5-sonnet'}
-                  </span>
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-2xl font-bold">{totalRules}</div>
+                  <div className="text-blue-100 text-sm">Total Rules</div>
                 </div>
-                <div className="p-6 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Confidence</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-600"
-                          style={{ width: `${results.confidence_score || 85}%` }}
-                        />
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-2xl font-bold text-green-300">{passedCount}</div>
+                  <div className="text-blue-100 text-sm">Passed</div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-2xl font-bold text-red-300">{failedCount}</div>
+                  <div className="text-blue-100 text-sm">Failed</div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-2xl font-bold text-yellow-300">{warningCount}</div>
+                  <div className="text-blue-100 text-sm">Warnings</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[320px_1fr] gap-6">
+              {/* Left Sidebar */}
+              <aside className="flex flex-col gap-4">
+                {/* Status Card */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-6 text-center">
+                    <div className="text-5xl mb-3">{results.is_valid ? '✅' : '❌'}</div>
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-3 ${
+                      results.is_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {results.is_valid ? 'APPROVED' : 'REJECTED'}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono mt-2">
+                      Validated: {formatDate(results.validation_timestamp)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documents Used */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                    <span className="text-sm font-semibold text-gray-700">📄 Documents Used</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {results.policy_declaration_name && (
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Policy Declaration</div>
+                        <div className="font-semibold text-sm text-gray-900 truncate">
+                          {results.policy_declaration_name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {results.policy_declarations_count || 0} declarations
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {results.confidence_score || 85}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Processing Cost</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      ${(results.total_cost || 0).toFixed(4)}
-                    </span>
-                  </div>
-                  {(results.policy_declaration_cost || 0) > 0 && (
-                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-500">Policy Declaration Cost</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        ${(results.policy_declaration_cost || 0).toFixed(4)}
-                      </span>
-                    </div>
-                  )}
-                  {(results.playbook_cost || 0) > 0 && (
-                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-500">SOP Cost</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        ${(results.playbook_cost || 0).toFixed(4)}
-                      </span>
-                    </div>
-                  )}
-                  {(results.document_cost || 0) > 0 && (
-                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-500">Claim Cost</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        ${(results.document_cost || 0).toFixed(4)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Tokens</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {(results.total_tokens || 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Time</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {results.validation_timestamp 
-                        ? new Date(results.validation_timestamp).toLocaleString()
-                        : new Date().toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Download Actions */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-6 flex flex-col gap-3">
-                  <button
-                    onClick={resetWorkflow}
-                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-                  >
-                    🔄 Validate Another Claim
-                  </button>
-                  <a
-                    href={`http://localhost:5002/api/audit-oversight/audit/${results.audit_id}/download/csv`}
-                    download
-                    className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-center transition-colors"
-                  >
-                    📥 Download CSV Report
-                  </a>
-                  <a
-                    href={`http://localhost:5002/api/audit-oversight/audit/${results.audit_id}/download/json`}
-                    download
-                    className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-center transition-colors"
-                  >
-                    📄 Download JSON
-                  </a>
-                </div>
-              </div>
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex flex-col">
-              {/* Validation Summary */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Validation Summary</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {results.policy_declaration_name && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="text-sm text-gray-600 mb-1">Policy Declaration</div>
-                      <div className="font-semibold text-gray-900">{results.policy_declaration_name}</div>
+                    )}
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <div className="text-xs text-gray-600 mb-1">SOP Document</div>
+                      <div className="font-semibold text-sm text-gray-900 truncate">
+                        {results.playbook_name || 'SOP'}
+                      </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {results.policy_declarations_count || 0} declarations
+                        {results.total_rules || totalRules} rules
                       </div>
                     </div>
-                  )}
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-600 mb-1">SOP Document</div>
-                    <div className="font-semibold text-gray-900">{results.playbook_name}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {results.total_rules || 0} rules
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <div className="text-xs text-gray-600 mb-1">Claim Document</div>
+                      <div className="font-semibold text-sm text-gray-900 truncate">
+                        {results.document_name || 'Claim'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-600 mb-1">Claim Document</div>
-                    <div className="font-semibold text-gray-900">{results.document_name}</div>
-                    {results.checkposts_count > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        {results.checkposts_count} checkposts
+                    {results.checkposts_count !== undefined && (
+                      <div className="bg-orange-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Team Checkpost File</div>
+                        <div className="font-semibold text-sm text-gray-900 truncate">
+                          {checkpostData?.source_file || 'Team Checkposts'}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {results.checkposts_count || checkpostData?.count || 0} checkposts
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1">
-                {/* Tabs */}
-                <div className="border-b border-gray-200">
-                  <div className="flex gap-4 px-6">
-                    <button className="px-4 py-3 border-b-2 border-blue-600 text-blue-600 font-semibold text-sm">
-                      ⚙️ Automated Rules ({results.rule_checks?.length || 0})
-                    </button>
+                {/* AI Analysis */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">🤖 AI Analysis</span>
+                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                      {results.ai_model || 'claude-3.5-sonnet'}
+                    </span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-600">Confidence</span>
+                        <span className="text-sm font-semibold text-gray-900">{complianceScore}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600" style={{ width: `${Math.min(complianceScore, 100)}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-gray-100 space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Total Cost</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(results.total_cost || 0)}</span>
+                      </div>
+                      {(results.policy_declaration_cost || 0) > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Policy Declaration</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(results.policy_declaration_cost)}</span>
+                        </div>
+                      )}
+                      {(results.playbook_cost || 0) > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">SOP Extraction</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(results.playbook_cost)}</span>
+                        </div>
+                      )}
+                      {(results.document_cost || 0) > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Claim Extraction</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(results.document_cost)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                        <span className="text-gray-600">Tokens Used</span>
+                        <span className="font-semibold text-gray-900">
+                          {(results.total_tokens || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Rules List */}
-                <div className="max-h-[600px] overflow-y-auto">
-                  {results.rule_checks && results.rule_checks.length > 0 ? (
-                    results.rule_checks.map((check: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="text-xl flex-shrink-0 w-6 text-center">
-                          {check.status === 'PASS' && '✅'}
-                          {check.status === 'FAIL' && '❌'}
-                          {check.status === 'WARNING' && '⚠️'}
-                          {(!check.status || check.status === 'N/A') && 'ℹ️'}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1">
-                            {check.rule}
+                {/* Actions */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-4 flex flex-col gap-2">
+                    <button
+                      onClick={resetWorkflow}
+                      className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm"
+                    >
+                      🔄 Validate Another Claim
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!results?.audit_id) return;
+                        const choice = window.prompt('Export format? Type csv, json, or pdf', 'csv');
+                        if (!choice) return;
+                        const format = choice.trim().toLowerCase();
+                        if (!['csv', 'json', 'pdf'].includes(format)) {
+                          alert('Invalid format. Please enter csv, json, or pdf.');
+                          return;
+                        }
+                        const url = `http://localhost:5002/api/audit-oversight/audit/${results.audit_id}/download/${format}`;
+                        // open in same tab to trigger download
+                        window.location.href = url;
+                      }}
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm text-center"
+                    >
+                      📥 Export Results (CSV / JSON / PDF)
+                    </button>
+                  </div>
+                </div>
+              </aside>
+
+              {/* Main Content */}
+              <main className="flex flex-col gap-4">
+                {/* Rules Display */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col">
+                  <div className="border-b border-gray-200 bg-gray-50">
+                    <div className="flex gap-1 px-4 py-2 text-sm font-semibold text-gray-700">
+                      {(['All', 'Policy Declarations', 'SOP Rules', 'Team Checkposts'] as const).map((tab) => {
+                        const count = tabTotal(tab);
+                        const isActive = rulesTab === tab;
+                        return (
+                          <button
+                            key={tab}
+                            onClick={() => setRulesTab(tab)}
+                            className={`px-4 py-2 rounded-t-md transition-colors ${
+                              isActive
+                                ? 'border-b-2 border-blue-600 text-blue-600 bg-white'
+                                : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                          >
+                            {tab} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto max-h-[600px]">
+                    {groupedRules
+                      .filter((group) => rulesTab === 'All' || group.category === rulesTab)
+                      .map((group) => (
+                        <div key={group.category} className="border-b border-gray-200">
+                          <div className={`px-6 py-3 border-b border-gray-100 ${
+                            group.category === 'Policy Declarations'
+                              ? 'bg-blue-50'
+                              : group.category === 'SOP Rules'
+                                ? 'bg-green-50'
+                                : group.category === 'Team Checkposts'
+                                  ? 'bg-purple-50'
+                                  : 'bg-gray-50'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <h3 className={`font-semibold text-sm ${categoryBadge(group.category)}`}>
+                                {group.category} ({group.stats.total} {group.stats.total === 1 ? 'rule' : 'rules'})
+                              </h3>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-green-700 font-medium">{group.stats.pass} passed</span>
+                                <span className="text-red-700 font-medium">{group.stats.fail} failed</span>
+                                {group.stats.warn > 0 && (
+                                  <span className="text-yellow-700 font-medium">{group.stats.warn} warning</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              check.status === 'PASS' 
-                                ? 'bg-green-100 text-green-800'
-                                : check.status === 'FAIL'
-                                  ? 'bg-red-100 text-red-800'
-                                  : check.status === 'WARNING'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {check.status || 'N/A'}
-                            </span>
-                            {check.details && (
-                              <span className="text-gray-500">{check.details}</span>
+
+                          <div className="divide-y divide-gray-100">
+                            {group.items.length === 0 ? (
+                              <div className="px-6 py-4 text-sm text-gray-500">No rules found in this category.</div>
+                            ) : (
+                              group.items.map((check: any, idx: number) => (
+                                <div
+                                  key={`${group.category}-${idx}`}
+                                  className={`px-6 py-4 hover:bg-gray-50 transition-colors ${
+                                    check.status === 'FAIL'
+                                      ? 'border-l-4 border-red-500'
+                                      : check.status === 'WARNING'
+                                        ? 'border-l-4 border-yellow-500'
+                                        : ''
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-4">
+                                    <div className="text-2xl flex-shrink-0">{ruleIcon(check.status)}</div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold text-gray-900 mb-1 break-words">
+                                        {check.rule || 'Untitled rule'}
+                                      </div>
+                                      {check.details && (
+                                        <div className="text-sm text-gray-600 mb-2 break-words">
+                                          {check.details}
+                                        </div>
+                                      )}
+                                      {check.issue && (
+                                        <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
+                                          <strong>Issue:</strong> {check.issue}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${pillClass(check.status)}`}>
+                                          {check.status || 'N/A'}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {group.category}
+                                        </span>
+                                        {check.field && (
+                                          <span className="text-xs text-gray-500">
+                                            Field: {check.field}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-gray-500">
-                      No rule checks available
-                    </div>
-                  )}
+                      ))}
+                  </div>
                 </div>
-              </div>
-            </main>
+              </main>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

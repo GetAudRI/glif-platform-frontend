@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     FileSearch, FileText, DollarSign, ClipboardCheck,
-    ArrowRight, Sparkles, CheckCircle2, Clock
+    ArrowRight, Sparkles, CheckCircle2, Clock, LogOut, User
 } from 'lucide-react';
+import LoginModal from './LoginModal';
+import { isAuthenticated, getUsername, clearAuth } from '../utils/auth';
 
 interface UseCaseCard {
     id: string;
@@ -45,7 +48,7 @@ const useCases: UseCaseCard[] = [
             'Risk scoring'
         ],
         status: 'active',
-        externalUrl: 'http://localhost:5002/rules-engine/contract-review/'
+        route: '/contract-review'
     },
     {
         id: 'invoice-approval',
@@ -94,15 +97,48 @@ const useCases: UseCaseCard[] = [
 
 export default function LandingPage() {
     const navigate = useNavigate();
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [selectedUseCase, setSelectedUseCase] = useState<UseCaseCard | null>(null);
+    const [authenticated, setAuthenticated] = useState(isAuthenticated());
+    const [username, setUsername] = useState(getUsername());
 
     const handleCardClick = (useCase: UseCaseCard) => {
         if (useCase.status === 'coming-soon') return;
 
+        // Check if user is authenticated
+        if (!isAuthenticated()) {
+            setSelectedUseCase(useCase);
+            setShowLoginModal(true);
+            return;
+        }
+
+        // User is authenticated, proceed to use case
         if (useCase.route) {
             navigate(useCase.route);
         } else if (useCase.externalUrl) {
             window.location.href = useCase.externalUrl;
         }
+    };
+
+    const handleLogin = (loggedInUsername: string) => {
+        setAuthenticated(true);
+        setUsername(loggedInUsername);
+        
+        // If there was a selected use case, navigate to it
+        if (selectedUseCase) {
+            if (selectedUseCase.route) {
+                navigate(selectedUseCase.route);
+            } else if (selectedUseCase.externalUrl) {
+                window.location.href = selectedUseCase.externalUrl;
+            }
+            setSelectedUseCase(null);
+        }
+    };
+
+    const handleLogout = () => {
+        clearAuth();
+        setAuthenticated(false);
+        setUsername(null);
     };
 
     return (
@@ -121,12 +157,33 @@ export default function LandingPage() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                Documentation
-                            </button>
-                            <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
-                                Get Started
-                            </button>
+                            {authenticated ? (
+                                <>
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                                        <User className="w-4 h-4" />
+                                        <span className="text-sm font-medium">{username}</span>
+                                    </div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                        Documentation
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLoginModal(true)}
+                                        className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                                    >
+                                        Login
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -251,6 +308,17 @@ export default function LandingPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Login Modal */}
+            <LoginModal
+                isOpen={showLoginModal}
+                onClose={() => {
+                    setShowLoginModal(false);
+                    setSelectedUseCase(null);
+                }}
+                onLogin={handleLogin}
+                useCaseName={selectedUseCase?.title}
+            />
         </div>
     );
 }

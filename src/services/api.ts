@@ -2,6 +2,237 @@
 // Updated to point to glif-platform-backend
 const API_BASE = 'http://localhost:5002';
 
+// ==================== AUTHENTICATION API ====================
+
+/**
+ * Login with username and password
+ */
+export async function login(username: string, password: string) {
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Login failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error logging in:', error);
+    throw error;
+  }
+}
+
+/**
+ * Logout
+ */
+export async function logout() {
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error logging out:', error);
+    throw error;
+  }
+}
+
+/**
+ * Verify authentication
+ */
+export async function verifyAuth(username: string) {
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username }),
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error verifying auth:', error);
+    throw error;
+  }
+}
+
+// ==================== END AUTHENTICATION API ====================
+
+// ==================== CONTRACT REVIEW API ====================
+
+/**
+ * List all playbooks for contract review
+ */
+export async function listContractReviewPlaybooks() {
+  try {
+    const response = await fetch(`${API_BASE}/api/contract-review/playbooks`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error listing playbooks:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get specific playbook
+ */
+export async function getContractReviewPlaybook(playbookId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/contract-review/playbooks/${playbookId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error getting playbook:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload playbook for contract review
+ */
+export async function uploadContractReviewPlaybook(file: File) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE}/api/contract-review/playbooks/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to upload playbook');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error uploading playbook:', error);
+    throw error;
+  }
+}
+
+/**
+ * List all contracts
+ */
+export async function listContractReviewContracts(options?: { search?: string; extractedOnly?: boolean }) {
+  try {
+    const params = new URLSearchParams();
+    if (options?.search) params.append('search', options.search);
+    if (options?.extractedOnly) params.append('extracted_only', 'true');
+
+    const response = await fetch(`${API_BASE}/api/contract-review/contracts?${params.toString()}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error listing contracts:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get specific contract
+ */
+export async function getContractReviewContract(documentId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/contract-review/contracts/${documentId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error getting contract:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload contract for review
+ */
+export async function uploadContractReviewContract(file: File) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE}/api/contract-review/contracts/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to upload contract');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error uploading contract:', error);
+    throw error;
+  }
+}
+
+/**
+ * Validate contract against playbook
+ */
+export async function validateContractReview(playbookId: number, documentId: number, useFastValidation: boolean = false) {
+  try {
+    const response = await fetch(`${API_BASE}/api/contract-review/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        playbook_id: playbookId,
+        document_id: documentId,
+        use_fast_validation: useFastValidation
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Validation failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error validating contract:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get validation result
+ */
+export async function getContractReviewValidation(validationId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/contract-review/validations/${validationId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error getting validation:', error);
+    throw error;
+  }
+}
+
+// ==================== END CONTRACT REVIEW API ====================
+
 export async function testConnection() {
   const response = await fetch(`${API_BASE}/api/audit-oversight/health`);
   return response.json();

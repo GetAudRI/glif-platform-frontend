@@ -130,6 +130,7 @@ export default function GLIFPrototype() {
   const [activeTab, setActiveTab] = useState('connect');
   const [connected, setConnected] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState('C1234');
+  const [graphView, setGraphView] = useState<'basic' | 'enhanced'>('enhanced');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestClaimId, setRequestClaimId] = useState('');
   const [requestDocName, setRequestDocName] = useState('');
@@ -1574,458 +1575,55 @@ export default function GLIFPrototype() {
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <h2 className="text-xl font-semibold text-gray-900">Link Graph: Comprehensive Claim Audit</h2>
-                    <p className="text-sm text-gray-600 mt-1">Visual audit report showing rules, documentation, risk assessment, and AI insights</p>
+                    <h2 className="text-xl font-semibold text-gray-900">Link Graphs: Document Corpus Visualization</h2>
+                    <p className="text-sm text-gray-600 mt-1">Visualize the complex interconnected network of rules across Policies, SOPs, and Checkposts</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Search className="w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search claim ID..."
-                      value={selectedClaim}
-                      onChange={(e) => setSelectedClaim(e.target.value.toUpperCase())}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setGraphView('basic')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          graphView === 'basic'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Basic View
+                      </button>
+                      <button
+                        onClick={() => setGraphView('enhanced')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          graphView === 'enhanced'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Enhanced View
+                      </button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
+              <CardContent className="p-0">
+                <div className="w-full" style={{ height: 'calc(100vh - 300px)', minHeight: '800px' }}>
+                  {graphView === 'basic' ? (
+                    <iframe
+                      src="http://localhost:5002/templates/graphs_tab_mockup.html"
+                      className="w-full h-full border-0"
+                      title="Basic Link Graphs Visualization"
+                      style={{ minHeight: '800px' }}
+                    />
+                  ) : (
+                    <iframe
+                      src="http://localhost:5002/templates/graphs_tab_mockup_enhanced.html"
+                      className="w-full h-full border-0"
+                      title="Enhanced Link Graphs Visualization"
+                      style={{ minHeight: '800px' }}
+                    />
+                  )}
+                </div>
+              </CardContent>
             </Card>
-
-            {(() => {
-              const claim = MOCK_CLAIMS.find(c => c.id === selectedClaim);
-              if (!claim) {
-                return (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <FileSearch className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600">Claim {selectedClaim} not found</p>
-                      <p className="text-sm text-gray-500 mt-1">Try: C1234, C1377, or C1411</p>
-                    </CardContent>
-                  </Card>
-                );
-              }
-
-              // Define rules data per claim
-              const rulesData: Record<string, Array<{ name: string; status: 'pass' | 'warning' | 'fail' }>> = {
-                C1234: [
-                  { name: 'R1: Proof of Age Required', status: 'fail' },
-                  { name: 'R2: Premium vs Coverage Validation', status: 'warning' },
-                  { name: 'R3: Coverage Type Verification', status: 'pass' },
-                  { name: 'R4: Policy Period Validity', status: 'pass' },
-                  { name: 'R5: Payment Authorization Check', status: 'pass' },
-                ],
-                C1377: [
-                  { name: 'R6: Payment Limit Threshold', status: 'warning' },
-                  { name: 'R7: Coverage Letter Required', status: 'pass' },
-                  { name: 'R8: Property Details Complete', status: 'pass' },
-                  { name: 'R9: Premium Calculation Check', status: 'pass' },
-                ],
-                C1411: [
-                  { name: 'R10: Airline PIR Documentation', status: 'fail' },
-                  { name: 'R11: Delay Hours Verification', status: 'warning' },
-                  { name: 'R12: Travel Policy Exclusions', status: 'pass' },
-                  { name: 'R13: Receipt Documentation', status: 'pass' },
-                ],
-              };
-
-              const claimRules = rulesData[claim.id] || [];
-
-              // Define risk data per claim
-              const riskData: Record<string, { category: string; score: number; factors: string[]; color: string }> = {
-                C1234: {
-                  category: 'Medium Risk',
-                  score: 65,
-                  factors: [
-                    'Age verification documentation gap',
-                    'Premium-to-coverage ratio borderline',
-                    'Policy coverage appropriate for applicant',
-                  ],
-                  color: 'yellow',
-                },
-                C1377: {
-                  category: 'Low Risk',
-                  score: 85,
-                  factors: [
-                    'Payment amount 95% of policy limit',
-                    'All documentation complete',
-                    'Coverage properly applied',
-                  ],
-                  color: 'green',
-                },
-                C1411: {
-                  category: 'Medium Risk',
-                  score: 70,
-                  factors: [
-                    'Missing airline PIR documentation',
-                    'Delay hours within policy threshold',
-                    'Receipt documentation incomplete',
-                  ],
-                  color: 'yellow',
-                },
-              };
-
-              const claimRisk = riskData[claim.id];
-
-              // Define documentation data
-              const docsData: Record<string, Array<{ name: string; present: boolean }>> = {
-                C1234: [
-                  { name: 'PolicyDeclarations.pdf', present: true },
-                  { name: 'PaymentVoucher.xlsx', present: true },
-                  { name: 'ProofOfAge.pdf', present: false },
-                ],
-                C1377: [
-                  { name: 'CoverageLetter.docx', present: true },
-                  { name: 'PaymentVoucher.xlsx', present: true },
-                ],
-                C1411: [
-                  { name: 'AirlinePIR.pdf', present: false },
-                  { name: 'Receipts.zip', present: true },
-                ],
-              };
-
-              const claimDocs = docsData[claim.id] || [];
-              const docsPresent = claimDocs.filter(d => d.present).length;
-              const docsTotal = claimDocs.length;
-
-              // AI Notes per claim
-              const aiNotes: Record<string, { strengths: string[]; improvements: string[]; actions: string[]; confidence: number }> = {
-                C1234: {
-                  strengths: [
-                    'Premium calculation is accurate and well-documented',
-                    'Policy coverage aligns with applicant\'s stated needs',
-                    'Risk factors properly identified and noted in underwriting',
-                  ],
-                  improvements: [
-                    'Missing proof of age documentation - required for under-25 drivers per underwriting guidelines section 3.2',
-                    'Premium validation shows borderline ratio - recommend secondary review by senior underwriter',
-                  ],
-                  actions: [
-                    'Request ProofOfAge.pdf from claims supervisor within 5 business days',
-                    'Schedule follow-up review once documentation complete',
-                    'Consider additional discount eligibility review upon completion',
-                  ],
-                  confidence: 92,
-                },
-                C1377: {
-                  strengths: [
-                    'Complete documentation package with all required forms',
-                    'Risk assessment thoroughly documented and justified',
-                    'Payment processing properly authorized and tracked',
-                  ],
-                  improvements: [
-                    'Payment amount at 95% of policy limit - recommend review of limit adequacy',
-                    'Consider proactive communication with policyholder about limit proximity',
-                  ],
-                  actions: [
-                    'Flag account for limit review at next renewal',
-                    'Send policyholder notification about remaining coverage amount',
-                    'No immediate action required - file meets compliance standards',
-                  ],
-                  confidence: 96,
-                },
-                C1411: {
-                  strengths: [
-                    'Delay hours properly verified against airline records',
-                    'Receipt documentation shows appropriate expense tracking',
-                    'Policy exclusions correctly applied to claim evaluation',
-                  ],
-                  improvements: [
-                    'Missing Airline PIR (Property Irregularity Report) - required for all baggage delay claims per policy section 8.4',
-                    'Travel delay verification incomplete without official airline documentation',
-                  ],
-                  actions: [
-                    'Request official Airline PIR from claimant within 7 business days',
-                    'Verify delay hours against airline\'s public flight records',
-                    'Hold payment pending receipt of required PIR documentation',
-                  ],
-                  confidence: 88,
-                },
-              };
-
-              const claimNotes = aiNotes[claim.id];
-
-              return (
-                <>
-                  {/* Main Content Grid */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Left Column */}
-                    <div className="space-y-6">
-                      {/* Network View */}
-                      <Card>
-                        <CardHeader>
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <Network className="w-5 h-5" />
-                            Network View
-                          </h3>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="bg-gray-50 rounded-lg p-6">
-                            <div className="flex flex-col items-center space-y-4">
-                              {/* Claim Node */}
-                              <div className="flex items-center justify-center w-32 h-12 bg-blue-600 text-white rounded-lg font-semibold shadow-md">
-                                {claim.id}
-                              </div>
-                              
-                              {/* Connection Lines */}
-                              <div className="flex gap-8">
-                                <div className="w-px h-12 bg-gray-300"></div>
-                                <div className="w-px h-12 bg-gray-300"></div>
-                                <div className="w-px h-12 bg-gray-300"></div>
-                              </div>
-
-                              {/* Child Nodes */}
-                              <div className="flex gap-4">
-                                <div className={`flex items-center justify-center w-24 h-10 rounded-lg font-medium text-sm shadow ${
-                                  claim.policyId ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                }`}>
-                                  {claim.policyId}
-                                </div>
-                                <div className={`flex items-center justify-center w-24 h-10 rounded-lg font-medium text-sm shadow ${
-                                  docsPresent === docsTotal ? 'bg-green-100 text-green-700' : 
-                                  docsPresent > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                                }`}>
-                                  Docs {docsPresent}/{docsTotal}
-                                </div>
-                                <div className={`flex items-center justify-center w-24 h-10 rounded-lg font-medium text-sm shadow ${
-                                  claimRisk.color === 'green' ? 'bg-green-100 text-green-700' :
-                                  claimRisk.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                                }`}>
-                                  Metadata
-                                </div>
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500 text-center mt-4">
-                              Color-coded by status: 
-                              <span className="text-green-600 mx-1">●</span>Complete
-                              <span className="text-yellow-600 mx-1">●</span>Warning
-                              <span className="text-red-600 mx-1">●</span>Critical
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Risk Analysis */}
-                      <Card>
-                        <CardHeader>
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" />
-                            Risk Analysis
-                          </h3>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-700">Risk Category:</span>
-                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                claimRisk.color === 'green' ? 'bg-green-100 text-green-700' :
-                                claimRisk.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                              }`}>
-                                {claimRisk.category}
-                              </span>
-                            </div>
-                            
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-700">Risk Score:</span>
-                                <span className="text-2xl font-bold text-gray-900">{claimRisk.score}/100</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div 
-                                  className={`h-3 rounded-full ${
-                                    claimRisk.score >= 80 ? 'bg-green-600' :
-                                    claimRisk.score >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                                  }`}
-                                  style={{ width: `${claimRisk.score}%` }}
-                                ></div>
-                              </div>
-                            </div>
-
-                            <div>
-                              <p className="text-sm font-medium text-gray-700 mb-2">Key Factors:</p>
-                              <ul className="space-y-2">
-                                {claimRisk.factors.map((factor, i) => (
-                                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                                    <span className="text-gray-400 mt-0.5">•</span>
-                                    <span>{factor}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="space-y-6">
-                      {/* Rules Applied */}
-                      <Card>
-                        <CardHeader>
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <Settings className="w-5 h-5" />
-                            Rules Applied ({claimRules.length})
-                          </h3>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {claimRules.map((rule, i) => (
-                              <div 
-                                key={i} 
-                                className={`flex items-center gap-3 p-3 rounded-lg ${
-                                  rule.status === 'pass' ? 'bg-green-50 border border-green-200' :
-                                  rule.status === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-                                  'bg-red-50 border border-red-200'
-                                }`}
-                              >
-                                {rule.status === 'pass' ? (
-                                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                                ) : rule.status === 'warning' ? (
-                                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                                ) : (
-                                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                                )}
-                                <span className={`text-sm font-medium ${
-                                  rule.status === 'pass' ? 'text-green-900' :
-                                  rule.status === 'warning' ? 'text-yellow-900' : 'text-red-900'
-                                }`}>
-                                  {rule.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Documentation Completeness */}
-                      <Card>
-                        <CardHeader>
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <FileText className="w-5 h-5" />
-                            Documentation Completeness
-                          </h3>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {claimDocs.map((doc, i) => (
-                              <div 
-                                key={i}
-                                className={`flex items-center justify-between p-3 rounded-lg ${
-                                  doc.present ? 'bg-gray-50' : 'bg-red-50 border border-red-200'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {doc.present ? (
-                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                  ) : (
-                                    <XCircle className="w-5 h-5 text-red-600" />
-                                  )}
-                                  <span className={`text-sm ${doc.present ? 'text-gray-900' : 'text-red-900 font-medium'}`}>
-                                    {doc.name}
-                                  </span>
-                                </div>
-                                {!doc.present && (
-                                  <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-1 rounded">
-                                    MISSING
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                            
-                            <div className="pt-3 border-t border-gray-200">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-700">Status:</span>
-                                <span className={`text-sm font-semibold ${
-                                  docsPresent === docsTotal ? 'text-green-600' : 'text-yellow-600'
-                                }`}>
-                                  {docsPresent}/{docsTotal} Required Docs Present
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-
-                  {/* AI Auditor Notes - Full Width */}
-                  <Card>
-                    <CardHeader>
-                      <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                        <Activity className="w-5 h-5" />
-                        AI Auditor Notes
-                      </h3>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Strengths */}
-                        <div>
-                          <h4 className="font-medium text-green-900 mb-2 flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Strengths:
-                          </h4>
-                          <ul className="space-y-1.5 ml-6">
-                            {claimNotes.strengths.map((item, i) => (
-                              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="text-green-600 mt-0.5">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Areas for Improvement */}
-                        <div>
-                          <h4 className="font-medium text-yellow-900 mb-2 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4" />
-                            Areas for Improvement:
-                          </h4>
-                          <ul className="space-y-1.5 ml-6">
-                            {claimNotes.improvements.map((item, i) => (
-                              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="text-yellow-600 mt-0.5">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Recommended Actions */}
-                        <div>
-                          <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
-                            <ChevronRight className="w-4 h-4" />
-                            Recommended Actions:
-                          </h4>
-                          <ul className="space-y-1.5 ml-6">
-                            {claimNotes.actions.map((item, i) => (
-                              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="text-blue-600 mt-0.5">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Audit Confidence */}
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700">Audit Confidence:</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-32 bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full"
-                                  style={{ width: `${claimNotes.confidence}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-lg font-bold text-blue-600">{claimNotes.confidence}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              );
-            })()}
           </div>
         )}
 

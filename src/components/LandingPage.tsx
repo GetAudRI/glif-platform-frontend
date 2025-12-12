@@ -98,10 +98,7 @@ const useCases: UseCaseCard[] = [
 ];
 
 const branchLabel = import.meta.env.VITE_BRANCH_NAME || (typeof __BRANCH__ !== 'undefined' ? __BRANCH__ : 'unknown');
-const branchBadgeClass =
-    branchLabel === 'feature/graph-rag'
-        ? 'bg-gradient-to-r from-rose-500 to-orange-500 text-white border border-white/30 shadow-sm'
-        : 'bg-gray-100 text-gray-700 border border-gray-200';
+const branchBadgeClass = 'bg-gray-100 text-gray-700 border border-gray-200';
 
 export default function LandingPage() {
     const navigate = useNavigate();
@@ -150,7 +147,7 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-rose-50 via-amber-50 to-slate-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             {/* Header */}
             <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-6">

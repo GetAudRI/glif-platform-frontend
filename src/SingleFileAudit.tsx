@@ -7,7 +7,8 @@ import {
   uploadPolicyDeclaration,
   getPolicyDeclaration,
   getPlaybook,
-  getTeamCheckpostFile
+  getTeamCheckpostFile,
+  getGraphSubgraph
 } from './services/api';
 
 type StepStatus = 'active' | 'complete' | 'pending';
@@ -74,6 +75,10 @@ export default function SingleFileAudit() {
   const [policyDetails, setPolicyDetails] = useState<any>(null);
   const [playbookDetails, setPlaybookDetails] = useState<any>(null);
   const [teamCheckpostDetails, setTeamCheckpostDetails] = useState<any>(null);
+  const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[]; count?: any } | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState('');
+  const [showAuditDetailsModal, setShowAuditDetailsModal] = useState(false);
 
   const steps = [
     { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
@@ -185,6 +190,40 @@ export default function SingleFileAudit() {
     const query = claimSearchQuery.toLowerCase();
     return claim.name?.toLowerCase().includes(query);
   });
+
+  const fetchEvidenceGraph = async () => {
+    if (!results?.validation_id) return;
+    setGraphLoading(true);
+    setGraphError('');
+    try {
+      const data = await getGraphSubgraph({
+        validation_id: results.validation_id,
+        playbook_id: selectedPlaybookId || undefined,
+        document_id: documentId || undefined,
+        policy_declaration_id: selectedPolicyDeclarationId || undefined,
+        team_checkpost_file_id: selectedTeamCheckpostFileId || undefined,
+        limit: 200
+      });
+      setGraphData({ nodes: data.nodes || [], edges: data.edges || [], count: data.count });
+    } catch (err: any) {
+      setGraphError(err.message || 'Failed to load evidence graph');
+    } finally {
+      setGraphLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentStep === 6 && results?.validation_id) {
+      fetchEvidenceGraph();
+    }
+  }, [
+    currentStep,
+    results?.validation_id,
+    selectedPlaybookId,
+    documentId,
+    selectedPolicyDeclarationId,
+    selectedTeamCheckpostFileId
+  ]);
 
   const getStepStatus = (stepNum: number): StepStatus => {
     if (stepNum < currentStep) return 'complete';
@@ -509,6 +548,8 @@ export default function SingleFileAudit() {
       // Store audit ID and show results
       setResults({
         audit_id: data.audit_id,
+        validation_id: data.validation_id,
+        audit_result_id: data.audit_result_id,
         policy_declaration_name: data.policy_declaration_name || selectedPolicyDeclarationName,
         policy_declarations_count: data.policy_declarations_count || 0,
         playbook_name: data.playbook_name || selectedPlaybookName || sopFile?.name,
@@ -1493,7 +1534,9 @@ export default function SingleFileAudit() {
           'SOP Rules'
         );
         const checkpostFallback = buildFallbackRules(
-          teamCheckpostDetails?.checkposts || [],
+          teamCheckpostDetails?.checkposts
+            || teamCheckpostDetails?.checkposts_data
+            || [],
           'Team Checkposts'
         );
 
@@ -1503,6 +1546,22 @@ export default function SingleFileAudit() {
           ...sopFallback,
           ...checkpostFallback
         ];
+
+        // If backend reported more SOP rules than we have in checks/fallback, add placeholders to align counts
+        const sopReportedTotal = results.total_rules || 0;
+        const currentSopCount = combinedRules.filter((c: any) => categorizeRule(c) === 'SOP Rules').length;
+        const missingSop = sopReportedTotal > currentSopCount ? sopReportedTotal - currentSopCount : 0;
+        if (missingSop > 0) {
+          for (let i = 0; i < missingSop; i++) {
+            combinedRules.push({
+              rule: `SOP rule placeholder ${currentSopCount + i + 1}`,
+              details: 'Rule not returned in rule_checks; displaying to match reported total.',
+              status: 'N/A',
+              category: 'SOP Rules',
+              fallbackId: `SOP-placeholder-${i}`
+            });
+          }
+        }
 
         const totalRules = combinedRules.length || baseRules;
 
@@ -1565,8 +1624,16 @@ export default function SingleFileAudit() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-5xl font-bold mb-1">{complianceScore}%</div>
-                  <div className="text-blue-100 text-sm">Compliance Score</div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-5xl font-bold">{complianceScore}%</div>
+                    <div className="text-blue-100 text-sm">Compliance Score</div>
+                    <button
+                      onClick={() => setShowAuditDetailsModal(true)}
+                      className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-colors border border-white/30"
+                    >
+                      Audit Details
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1640,14 +1707,14 @@ export default function SingleFileAudit() {
                         {results.document_name || 'Claim'}
                       </div>
                     </div>
-                    {results.checkposts_count !== undefined && (
+                    {(results.checkposts_count !== undefined || results.team_checkpost_file) && (
                       <div className="bg-orange-50 rounded-lg p-3">
                         <div className="text-xs text-gray-600 mb-1">Team Checkpost File</div>
                         <div className="font-semibold text-sm text-gray-900 truncate">
-                          {checkpostData?.source_file || 'Team Checkposts'}
+                          {results.team_checkpost_file?.name || checkpostData?.source_file || 'Team Checkposts'}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {results.checkposts_count || checkpostData?.count || 0} checkposts
+                          {results.team_checkpost_file?.checkposts_count || results.checkposts_count || checkpostData?.count || 0} checkposts
                         </div>
                       </div>
                     )}
@@ -1732,6 +1799,12 @@ export default function SingleFileAudit() {
                     >
                       📥 Export Results (CSV / JSON / PDF)
                     </button>
+                  <button
+                    onClick={() => setShowAuditDetails(true)}
+                    className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm text-center"
+                  >
+                    Next: Audit Details →
+                  </button>
                   </div>
                 </div>
               </aside>
@@ -1846,6 +1919,131 @@ export default function SingleFileAudit() {
                 </div>
               </main>
             </div>
+
+        {/* Evidence Graph (POC) */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-gray-800">🕸️ Evidence Graph (POC)</div>
+              <div className="text-xs text-gray-500">Nodes from validation, playbook, policy, claim fields, and checkposts</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {graphError && (
+                <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded">
+                  {graphError}
+                </span>
+              )}
+              <button
+                onClick={fetchEvidenceGraph}
+                className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={graphLoading || !results?.validation_id}
+              >
+                {graphLoading ? 'Refreshing...' : 'Refresh evidence'}
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {!graphData && !graphLoading && (
+              <div className="text-sm text-gray-600">
+                Evidence graph will appear here after the first validation.
+              </div>
+            )}
+            {graphLoading && (
+              <div className="text-sm text-gray-600">Loading graph data...</div>
+            )}
+            {graphData && !graphLoading && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-gray-800 mb-2">
+                    Nodes ({graphData.count?.nodes ?? graphData.nodes.length})
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-auto">
+                    {graphData.nodes.map((node) => (
+                      <div key={node.id} className="bg-white rounded border border-gray-200 p-2">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{node.type}</div>
+                        <div className="text-sm font-medium text-gray-900 truncate">{node.label}</div>
+                        {node.snippet && (
+                          <div className="text-xs text-gray-600 mt-1 line-clamp-2">{node.snippet}</div>
+                        )}
+                        <div className="text-[11px] text-gray-500 mt-1">
+                          Source: {node.source_type} {node.source_id}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-gray-800 mb-2">
+                    Edges ({graphData.count?.edges ?? graphData.edges.length})
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-auto">
+                    {graphData.edges.map((edge) => {
+                      const fromLabel = graphData.nodes.find((n) => n.id === edge.from)?.label || edge.from;
+                      const toLabel = graphData.nodes.find((n) => n.id === edge.to)?.label || edge.to;
+                      return (
+                        <div key={edge.id} className="bg-white rounded border border-gray-200 p-2">
+                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{edge.type}</div>
+                          <div className="text-sm text-gray-900">
+                            {fromLabel} → {toLabel}
+                          </div>
+                          {edge.confidence !== undefined && edge.confidence !== null && (
+                            <div className="text-[11px] text-gray-500">Confidence: {edge.confidence}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Audit Details Modal */}
+        {showAuditDetailsModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowAuditDetailsModal(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowAuditDetailsModal(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+                aria-label="Close"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Audit Details</h3>
+              <div className="space-y-3 text-sm text-gray-800">
+                <div>
+                  <div className="text-xs text-gray-500">Claim</div>
+                  <div className="font-semibold">{results.document_name || results.claim_id || 'Unknown'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">SOP</div>
+                  <div className="font-semibold">{results.playbook_name || 'SOP'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Created</div>
+                  <div className="font-mono text-gray-700">{formatDate(results.validation_timestamp)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                      results.is_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {results.is_valid ? 'APPROVED' : 'REJECTED'}
+                  </span>
+                  <span className="text-sm text-gray-700 font-semibold">{complianceScore}% Score</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
           </div>
         );
       })()}

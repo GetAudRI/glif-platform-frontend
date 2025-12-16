@@ -13,10 +13,11 @@ import {
   startExtraction, getAuditProgress, runAuditCheck, getExtractedRules,
   startValidation, getValidationResults,  // DAY 4: Added validation imports
   saveRulesToJSON,  // MANUAL SAVE: Added save rules function
-  listDocuments, getDocument,  // DOCUMENTS: Added document functions
+  listDocuments, getDocument, deleteDocument, // DOCUMENTS: Added document delete
   generateClaimsFromSOP,  // CLAIM GENERATION: Added claim generation function
-  listPolicyDeclarations, getPolicyDeclaration,  // POLICY DECLARATIONS: Added policy declaration functions
-  getTeamCheckpostFile  // TEAM CHECKPOSTS: Added team checkpost file function
+  listPolicyDeclarations, getPolicyDeclaration, deletePolicyDeclaration,  // POLICY DECLARATIONS
+  getTeamCheckpostFile, deleteTeamCheckpostFile, // TEAM CHECKPOSTS
+  deletePlaybook, // SOP delete
 } from './services/api';
 import SingleFileAudit from './SingleFileAudit';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
@@ -182,6 +183,7 @@ export default function GLIFPrototype() {
   const [selectedTeamCheckpostFile, setSelectedTeamCheckpostFile] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'document' | 'extractions' | null>(null);
   const [corpusView, setCorpusView] = useState<'claims' | 'sops' | 'checkposts' | 'policies'>('claims');
+  const [selectedConcept, setSelectedConcept] = useState('concept1_validation_story.html');
   // ==================== END CORPUS TAB STATE ====================
   
   // ==================== CLAIM GENERATOR COMPONENT ====================
@@ -405,6 +407,39 @@ export default function GLIFPrototype() {
       setLoadingDocuments(false);
     }
   }
+
+  // Corpus delete handlers
+  const withConfirm = (message: string, action: () => Promise<void>) => {
+    if (!window.confirm(message)) return;
+    action().catch((err) => {
+      console.error(err);
+      setError(err.message || 'Delete failed');
+    });
+  };
+
+  const handleDeleteDocument = (id: number, name?: string) =>
+    withConfirm(`Delete document${name ? `: ${name}` : ''}?`, async () => {
+      await deleteDocument(id);
+      await loadDocuments();
+    });
+
+  const handleDeletePlaybook = (id: number, name?: string) =>
+    withConfirm(`Delete SOP${name ? `: ${name}` : ''}?`, async () => {
+      await deletePlaybook(id);
+      await loadDocuments();
+    });
+
+  const handleDeleteTeamCheckpostFile = (id: number, name?: string) =>
+    withConfirm(`Delete team checkpost file${name ? `: ${name}` : ''}?`, async () => {
+      await deleteTeamCheckpostFile(id);
+      await loadDocuments();
+    });
+
+  const handleDeletePolicyDeclaration = (id: number, name?: string) =>
+    withConfirm(`Delete policy declaration${name ? `: ${name}` : ''}?`, async () => {
+      await deletePolicyDeclaration(id);
+      await loadDocuments();
+    });
 
   async function handleViewDocument(documentId: number, mode: 'document' | 'extractions') {
     try {
@@ -776,7 +811,8 @@ export default function GLIFPrototype() {
           <TabButton id="claims" label="Claim Drilldown" icon={FileSearch} />
           <TabButton id="cost-analytics" label="Cost Analytics" icon={DollarSign} />
           <TabButton id="portfolio" label="Portfolio" icon={BarChart3} />
-          <TabButton id="audit-results" label="Audit Results" icon={ClipboardCheck} />
+          <TabButton id="audit-process" label="Audit Process" icon={ClipboardCheck} />
+          <TabButton id="audit-concepts" label="Audit Results" icon={FileText} />
         </div>
 
         {/* Tab Content */}
@@ -986,6 +1022,14 @@ export default function GLIFPrototype() {
                                       View Extractions
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeleteDocument(doc.id, doc.name)}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="Delete Document"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1052,6 +1096,14 @@ export default function GLIFPrototype() {
                                       View Extractions
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeletePlaybook(playbook.id, playbook.name)}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="Delete SOP"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1132,6 +1184,14 @@ export default function GLIFPrototype() {
                                       View Extractions
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeleteTeamCheckpostFile(file.id, file.name)}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="Delete Checkpost File"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1207,6 +1267,14 @@ export default function GLIFPrototype() {
                                     View Extractions
                                   </button>
                                 )}
+                                  <button
+                                    onClick={() => handleDeletePolicyDeclaration(pd.id, pd.name)}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                                    title="Delete Policy"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    Delete
+                                  </button>
                               </div>
                             </td>
                           </tr>
@@ -1407,8 +1475,51 @@ export default function GLIFPrototype() {
           </div>
         )}
         
-        {activeTab === 'audit-results' && (
+        {activeTab === 'audit-process' && (
           <AuditResults />
+        )}
+
+        {activeTab === 'audit-concepts' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Audit Results Concepts (Demo)</h2>
+                  <p className="text-sm text-gray-600">Preview four concept mocks to gather feedback.</p>
+                </div>
+              </div>
+              <div className="p-4 flex flex-wrap gap-2">
+                {[
+                  { label: 'concept1_validation_story', file: 'concept1_validation_story.html' },
+                  { label: 'concept2_evidence_map', file: 'concept2_evidence_map.html' },
+                  { label: 'concept3_audit_trail', file: 'concept3_audit_trail.html' },
+                  { label: 'concept4_executive_dashboard', file: 'concept4_executive_dashboard.html' },
+                ].map((c) => (
+                  <button
+                    key={c.file}
+                    onClick={() => setSelectedConcept(c.file)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                      selectedConcept === c.file
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-4">
+                <div className="w-full h-[70vh] border border-gray-200 rounded-lg overflow-hidden">
+                  <iframe
+                    key={selectedConcept}
+                    src={`http://localhost:5002/validation-concepts/${selectedConcept}`}
+                    title="Audit Concept"
+                    className="w-full h-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
         
         {activeTab === 'claims' && (

@@ -197,6 +197,13 @@ export default function LandingPage() {
                 </div>
             </div>
 
+            {/* Empty Test Button (feature/graph-rag only) */}
+            <div className="max-w-7xl mx-auto px-6 py-2">
+                <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
+                    Empty Button (graph-rag branch test)
+                </button>
+            </div>
+
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="text-center mb-12">

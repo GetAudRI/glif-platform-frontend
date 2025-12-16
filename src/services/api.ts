@@ -1008,6 +1008,25 @@ export async function getDocument(documentId: number) {
   }
 }
 
+/**
+ * Delete a document (claim/contract/etc.)
+ */
+export async function deleteDocument(documentId: number) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/documents/${documentId}`, {
+      method: 'DELETE'
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete document');
+    }
+    return data;
+  } catch (error) {
+    console.error('Failed to delete document:', error);
+    throw error;
+  }
+}
+
 // ==================== END DOCUMENTS API ====================
 
 // ==================== CLAIM GENERATION API ====================
@@ -1045,3 +1064,29 @@ export async function generateClaimsFromSOP(
 }
 
 // ==================== END CLAIM GENERATION API ====================
+
+// ==================== GRAPH / EVIDENCE API ====================
+
+export async function getGraphSubgraph(params: {
+  playbook_id?: number;
+  document_id?: number;
+  policy_declaration_id?: number;
+  team_checkpost_file_id?: number;
+  validation_id?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params.playbook_id) query.append('playbook_id', params.playbook_id.toString());
+  if (params.document_id) query.append('document_id', params.document_id.toString());
+  if (params.policy_declaration_id) query.append('policy_declaration_id', params.policy_declaration_id.toString());
+  if (params.team_checkpost_file_id) query.append('team_checkpost_file_id', params.team_checkpost_file_id.toString());
+  if (params.validation_id) query.append('validation_id', params.validation_id.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
+
+  const response = await fetch(`${API_BASE}/api/graph/subgraph?${query.toString()}`);
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to load evidence graph');
+  }
+  return data;
+}

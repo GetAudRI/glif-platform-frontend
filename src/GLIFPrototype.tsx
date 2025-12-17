@@ -18,6 +18,7 @@ import {
   listPolicyDeclarations, getPolicyDeclaration, deletePolicyDeclaration,  // POLICY DECLARATIONS
   getTeamCheckpostFile, deleteTeamCheckpostFile, // TEAM CHECKPOSTS
   deletePlaybook, // SOP delete
+  listAuditPlaybooks, listTeamCheckpostFiles, // Audit corpus lists (DB-backed)
 } from './services/api';
 import SingleFileAudit from './SingleFileAudit';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
@@ -140,6 +141,7 @@ export default function GLIFPrototype() {
   const [availableSOPs, setAvailableSOPs] = useState<any[]>([]);
   const [selectedClaims, setSelectedClaims] = useState<string[]>([]);
   const [selectedSOPs, setSelectedSOPs] = useState<string[]>([]);
+  const [selectedCheckpostFile, setSelectedCheckpostFile] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string>('');
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [error, setError] = useState<string>('');
@@ -166,6 +168,13 @@ export default function GLIFPrototype() {
   const [rulesSaved, setRulesSaved] = useState(false);
   const [savedFiles, setSavedFiles] = useState<string[]>([]);
   // ==================== END MANUAL SAVE RULES ====================
+
+  const selectedSopName =
+    selectedSOPs.length === 1
+      ? availableSOPs.find((s) => s.id === selectedSOPs[0])?.name || ''
+      : '';
+  const selectedSopIsJson =
+    typeof selectedSopName === 'string' && selectedSopName.endsWith('.json');
   
   // ==================== DAY 5: DRILL-DOWN MODAL STATE ====================
   const [showDrillDown, setShowDrillDown] = useState(false);
@@ -345,12 +354,14 @@ export default function GLIFPrototype() {
     setLoadingFiles(true);
     setError('');
     try {
-      const [claimsData, sopsData] = await Promise.all([
-        listClaims(),
-        listSOPs()
+      const [claimsData, sopsData, checkpostsData] = await Promise.all([
+        listClaims(100),
+        listSOPs(),
+        listTeamCheckpostFiles()
       ]);
-      setAvailableClaims(claimsData.claims || []);
-      setAvailableSOPs(sopsData.sops || []);
+      setAvailableClaims((claimsData as any).documents || (claimsData as any).claims || []);
+      setAvailableSOPs((sopsData as any).playbooks || (sopsData as any).sops || []);
+      setTeamCheckpostFiles((checkpostsData as any).team_checkpost_files || checkpostsData || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load files');
     } finally {
@@ -369,36 +380,20 @@ export default function GLIFPrototype() {
     setLoadingDocuments(true);
     try {
       // Load claims (documents), playbooks (SOPs), team checkpost files, and policy declarations
-      const [documentsData, playbooksResponse, checkpostsResponse, policyDeclarationsData] = await Promise.all([
+      const [documentsData, playbooksData, checkpostsData, policyDeclarationsData] = await Promise.all([
         listDocuments({ docType: 'claim', limit: 100 }),
-        fetch('http://localhost:5002/api/audit-oversight/playbooks'),
-        fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true'),
+        listAuditPlaybooks(),
+        listTeamCheckpostFiles(),
         listPolicyDeclarations()
       ]);
       
       setDocuments(documentsData.documents || []);
-      
-      // Parse playbooks response
-      const playbooksData = await playbooksResponse.json();
-      if (playbooksData.success) {
-        setPlaybooks(playbooksData.playbooks || []);
+      setPlaybooks((playbooksData as any).playbooks || playbooksData || []);
+      setTeamCheckpostFiles((checkpostsData as any).team_checkpost_files || checkpostsData || []);
+      if ((policyDeclarationsData as any).success) {
+        setPolicyDeclarations((policyDeclarationsData as any).policy_declarations || []);
       } else {
-        console.error('Failed to load playbooks:', playbooksData.error);
-      }
-      
-      // Parse team checkpost files response
-      const checkpostsData = await checkpostsResponse.json();
-      if (checkpostsData.success) {
-        setTeamCheckpostFiles(checkpostsData.team_checkpost_files || []);
-      } else {
-        console.error('Failed to load team checkpost files:', checkpostsData.error);
-      }
-      
-      // Parse policy declarations response
-      if (policyDeclarationsData.success) {
-        setPolicyDeclarations(policyDeclarationsData.policy_declarations || []);
-      } else {
-        console.error('Failed to load policy declarations:', policyDeclarationsData.error);
+        setPolicyDeclarations((policyDeclarationsData as any).policy_declarations || []);
       }
     } catch (err: any) {
       console.error('Failed to load documents:', err);
@@ -547,7 +542,11 @@ export default function GLIFPrototype() {
     }
     
     try {
-      const result = await startAudit(selectedClaims, selectedSOPs);
+      const result = await startAudit(
+        selectedClaims,
+        selectedSOPs,
+        selectedCheckpostFile || undefined
+      );
       setAuditId(result.audit_id);
       
       // Auto-trigger extraction
@@ -662,11 +661,11 @@ export default function GLIFPrototype() {
     setError('');
     try {
       const [claimsData, sopsData] = await Promise.all([
-        listClaims(),
+        listClaims(100),
         listSOPs()
       ]);
-      setAvailableClaims(claimsData.claims || []);
-      setAvailableSOPs(sopsData.sops || []);
+      setAvailableClaims((claimsData as any).documents || (claimsData as any).claims || []);
+      setAvailableSOPs((sopsData as any).playbooks || (sopsData as any).sops || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load files');
     } finally {
@@ -683,6 +682,14 @@ export default function GLIFPrototype() {
         return;
       }
       setSelectedClaims([...selectedClaims, claimId]);
+    }
+  }
+
+  function toggleCheckpostSelection(checkpostId: number) {
+    if (selectedCheckpostFile === checkpostId) {
+      setSelectedCheckpostFile(null);
+    } else {
+      setSelectedCheckpostFile(checkpostId);
     }
   }
 
@@ -1833,7 +1840,7 @@ export default function GLIFPrototype() {
                               
                               {availableClaims.length === 0 ? (
                                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
-                                  No claim files found in uploads/claims/ directory
+                                  No claims found in database
                                 </div>
                               ) : (
                                 <div className="border border-gray-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
@@ -1849,9 +1856,11 @@ export default function GLIFPrototype() {
                                         className="w-4 h-4 text-blue-600 rounded mr-3"
                                       />
                                       <div className="flex-1">
-                                        <div className="font-medium text-gray-900">{claim.name}</div>
+                                        <div className="font-medium text-gray-900">{claim.name || claim.id}</div>
                                         <div className="text-xs text-gray-500">
-                                          {(claim.size / 1024).toFixed(1)} KB • {claim.type}
+                                          {(claim.uploaded_at ? new Date(claim.uploaded_at).toLocaleDateString() : '') ||
+                                            claim.document_type ||
+                                            ''}
                                         </div>
                                       </div>
                                     </label>
@@ -1880,7 +1889,7 @@ export default function GLIFPrototype() {
                               
                               {availableSOPs.length === 0 ? (
                                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
-                                  No SOP files found in uploads/sops/ directory
+                                  No SOPs found in database
                                 </div>
                               ) : (
                                 <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1897,16 +1906,15 @@ export default function GLIFPrototype() {
                                       />
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">
-                                          <div className="font-medium text-gray-900">{sop.name}</div>
-                                          {/* VISUAL INDICATOR: Show badge for pre-extracted JSON files */}
-                                          {sop.name.endsWith('.json') && (
+                                          <div className="font-medium text-gray-900">{sop.name || sop.id}</div>
+                                          {sop.name && sop.name.endsWith('.json') && (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
                                               ⚡ Pre-extracted
                                             </span>
                                           )}
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                          {(sop.size / 1024).toFixed(1)} KB • {sop.type}
+                                          {sop.uploaded_at ? new Date(sop.uploaded_at).toLocaleDateString() : ''}
                                         </div>
                                       </div>
                                     </label>
@@ -1915,13 +1923,56 @@ export default function GLIFPrototype() {
                               )}
                             </div>
 
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold text-gray-900">
+                              Select Checkpost File (optional)
+                            </h4>
+                            <span className="text-sm text-gray-600">
+                              {selectedCheckpostFile ? '1 selected' : 'None selected'}
+                            </span>
+                          </div>
+                          
+                          {teamCheckpostFiles.length === 0 ? (
+                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+                              No checkpost files found in uploads/checkposts/ directory
+                            </div>
+                          ) : (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                              {teamCheckpostFiles.map((file) => (
+                                <label
+                                  key={file.id}
+                                  className="flex items-center p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer"
+                                >
+                                  <input
+                                    type="radio"
+                                    checked={selectedCheckpostFile === file.id}
+                                    onChange={() => toggleCheckpostSelection(file.id)}
+                                    className="w-4 h-4 text-blue-600 rounded mr-3"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{file.name}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {file.created_at ? new Date(file.created_at).toLocaleDateString() : ''}
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {file.total_cost ? `$${file.total_cost.toFixed(4)}` : ''}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
                             {selectedClaims.length > 0 && selectedSOPs.length > 0 && (
                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <h4 className="font-semibold text-blue-900">Ready to Audit</h4>
                                     <p className="text-sm text-blue-700">
-                                      {selectedClaims.length} claims • {selectedSOPs.length} SOPs selected
+                                  {selectedClaims.length} claims • {selectedSOPs.length} SOPs selected
+                                  {selectedCheckpostFile ? ' • 1 checkpost file' : ''}
                                     </p>
                                   </div>
                                   {/* WORKFLOW: Removed "Audit Check" button from batch audit
@@ -1991,7 +2042,7 @@ export default function GLIFPrototype() {
                         </div>
 
                         {/* MANUAL SAVE RULES: Show button for single audits (1 claim + 1 SOP) */}
-                        {claimsExtracted === 1 && selectedSOPs.length === 1 && !selectedSOPs[0]?.endsWith('.json') && (
+                        {claimsExtracted === 1 && selectedSOPs.length === 1 && !selectedSopIsJson && (
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
                             <h3 className="text-lg font-semibold text-blue-900 mb-2">
                               💾 Save Extracted Rules

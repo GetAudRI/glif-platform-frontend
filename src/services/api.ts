@@ -2,6 +2,32 @@
 // Updated to point to glif-platform-backend
 const API_BASE = 'http://localhost:5002';
 
+async function safeJson(response: Response) {
+  const text = await response.text();
+  try {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'initial',
+        hypothesisId: 'H1',
+        location: 'services/api.ts:safeJson',
+        message: 'parsing json',
+        data: { status: response.status, url: response.url, snippet: text.slice(0, 120) },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Unexpected response (status ${response.status}): ${text?.slice(0, 200) || 'No body'}`
+    );
+  }
+}
+
 // ==================== AUTHENTICATION API ====================
 
 /**
@@ -243,23 +269,51 @@ export async function testAuditModule() {
   return response.json();
 }
 
-export async function listClaims() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/files/claims`);
-  return response.json();
+export async function listClaims(limit = 100) {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/documents?type=claim&limit=${limit}`);
+  return safeJson(response);
 }
 
 export async function listSOPs() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/files/sops`);
-  return response.json();
+  return listAuditPlaybooks();
 }
 
-export async function startAudit(claims: string[], sops: string[]) {
+export async function listAuditPlaybooks() {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/playbooks`);
+  return safeJson(response);
+}
+
+export async function listTeamCheckpostFiles() {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/team-checkposts?show_all=true`);
+  return safeJson(response);
+}
+
+export async function startAudit(claims: string[], sops: string[], teamCheckpostFileId?: number) {
   const response = await fetch(`${API_BASE}/api/audit-oversight/audit/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ claims, sops })
+    body: JSON.stringify({
+      claims,
+      sops,
+      ...(teamCheckpostFileId ? { team_checkpost_file_id: teamCheckpostFileId } : {})
+    })
   });
-  return response.json();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'debug-session',
+      runId: 'initial',
+      hypothesisId: 'H2',
+      location: 'services/api.ts:startAudit',
+      message: 'startAudit response status',
+      data: { status: response.status, url: response.url, hasCheckpost: !!teamCheckpostFileId },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
+  return safeJson(response);
 }
 
 export async function startExtraction(auditId: string) {
@@ -267,12 +321,42 @@ export async function startExtraction(auditId: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
-  return response.json();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'debug-session',
+      runId: 'initial',
+      hypothesisId: 'H3',
+      location: 'services/api.ts:startExtraction',
+      message: 'startExtraction response status',
+      data: { status: response.status, url: response.url, auditId },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
+  return safeJson(response);
 }
 
 export async function getAuditProgress(auditId: string) {
   const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/progress`);
-  return response.json();
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'debug-session',
+      runId: 'initial',
+      hypothesisId: 'H4',
+      location: 'services/api.ts:getAuditProgress',
+      message: 'progress response status',
+      data: { status: response.status, url: response.url, auditId },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
+  return safeJson(response);
 }
 
 export async function runAuditCheck(auditId: string, claimFile: string, sopFile: string) {
@@ -281,12 +365,12 @@ export async function runAuditCheck(auditId: string, claimFile: string, sopFile:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ claim_file: claimFile, sop_file: sopFile })
   });
-  return response.json();
+  return safeJson(response);
 }
 
 export async function getExtractedRules(auditId: string) {
   const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/rules`);
-  return response.json();
+  return safeJson(response);
 }
 
 // ==================== DAY 4 UPDATE: VALIDATION API ====================
@@ -303,7 +387,7 @@ export async function startValidation(auditId: string) {
       },
     });
 
-    const data = await response.json();
+    const data = await safeJson(response);
 
     if (!data.success) {
       throw new Error(data.error || 'Failed to start validation');
@@ -322,7 +406,7 @@ export async function startValidation(auditId: string) {
 export async function getValidationResults(auditId: string) {
   try {
     const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/results`);
-    const data = await response.json();
+    const data = await safeJson(response);
 
     if (!data.success) {
       throw new Error(data.error || 'Failed to get results');
@@ -352,7 +436,7 @@ export async function saveRulesToJSON(auditId: string) {
       },
     });
 
-    const data = await response.json();
+    const data = await safeJson(response);
 
     if (!data.success) {
       throw new Error(data.error || 'Failed to save rules');

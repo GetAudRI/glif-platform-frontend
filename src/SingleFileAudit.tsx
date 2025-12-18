@@ -27,8 +27,8 @@ export default function SingleFileAudit() {
   const [policyDeclarationSearchQuery, setPolicyDeclarationSearchQuery] = useState('');
   const [loadingPolicyDeclarations, setLoadingPolicyDeclarations] = useState(false);
 
-  // SOP Selection State
-  const [sopMode, setSopMode] = useState<'upload' | 'select'>('select');
+  // SOP Selection State (Third Party SOP - Optional)
+  const [sopMode, setSopMode] = useState<'skip' | 'upload' | 'select'>('skip');
   const [sopFile, setSopFile] = useState<File | null>(null);
   const [existingPlaybooks, setExistingPlaybooks] = useState<any[]>([]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<number | null>(null);
@@ -82,7 +82,7 @@ export default function SingleFileAudit() {
 
   const steps = [
     { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
-    { number: 2, label: 'Select/Upload SOP', icon: '📄' },
+    { number: 2, label: 'Third Party SOP (Optional)', icon: '📄' },
     { number: 3, label: 'Team Checkposts (Optional)', icon: '📋' },
     { number: 4, label: 'Upload Claim', icon: '🚗' },
     { number: 5, label: 'Validate', icon: '⚡' },
@@ -486,8 +486,8 @@ export default function SingleFileAudit() {
     setError('');
 
     // Validate required data
-    if (!selectedPlaybookId) {
-      setError('Please select or upload an SOP first');
+    if (!selectedPolicyDeclarationId) {
+      setError('Please select or upload a Policy Declaration first');
       setValidateLoading(false);
       return;
     }
@@ -499,30 +499,31 @@ export default function SingleFileAudit() {
     }
 
     const requestBody: any = {
-      playbook_id: selectedPlaybookId,
+      policy_declaration_id: selectedPolicyDeclarationId,
       document_id: documentId,
       use_fast_validation: useFastValidation
     };
     
-    // Include Policy Declaration ID if selected
-    if (selectedPolicyDeclarationId) {
-      requestBody.policy_declaration_id = selectedPolicyDeclarationId;
-      console.log('✅ Including Policy Declaration in validation:', selectedPolicyDeclarationId);
+    // Include Third Party SOP (Optional)
+    if (selectedPlaybookId) {
+      requestBody.playbook_id = selectedPlaybookId;
+      console.log('✅ Including Third Party SOP in validation:', selectedPlaybookId);
     } else {
-      console.log('⚠️  No Policy Declaration selected (optional)');
+      console.log('⚠️  No Third Party SOP selected (optional)');
     }
     
-    // Only include team_checkpost_file_id if one is selected
+    // Only include team_checkpost_file_id if one is selected (Optional)
     if (selectedTeamCheckpostFileId) {
       requestBody.team_checkpost_file_id = selectedTeamCheckpostFileId;
       console.log('✅ Including team checkpost file in validation:', selectedTeamCheckpostFileId);
     } else {
-      console.log('⚠️  No team checkpost file selected');
+      console.log('⚠️  No team checkpost file selected (optional)');
     }
     
     console.log('Starting validation with:', {
-      playbook_id: selectedPlaybookId,
-      team_checkpost_file_id: selectedTeamCheckpostFileId,
+      policy_declaration_id: selectedPolicyDeclarationId,
+      playbook_id: selectedPlaybookId || null,
+      team_checkpost_file_id: selectedTeamCheckpostFileId || null,
       document_id: documentId,
       checkpost_data: checkpostData,
       requestBody
@@ -796,18 +797,27 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 2: Select/Upload SOP */}
+      {/* Step 2: Third Party SOP (Optional) */}
       {currentStep === 2 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 2: Select or Upload SOP 📄
+            Step 2: Third Party SOP (Optional) 📄
           </h2>
           <p className="text-gray-600 mb-6">
-            Choose an existing SOP from the database or upload a new one. AI will extract validation rules.
+            Optionally add a third-party SOP for additional validation rules, or skip this step to proceed with Policy Declaration only.
           </p>
 
           {/* Mode Toggle */}
           <div className="flex gap-3 mb-6">
+            <button
+              onClick={() => setSopMode('skip')}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'skip'
+                ? 'bg-gray-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+            >
+              Skip
+            </button>
             <button
               onClick={() => setSopMode('select')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'select'
@@ -829,6 +839,33 @@ export default function SingleFileAudit() {
               Upload New
             </button>
           </div>
+
+          {/* Skip Mode */}
+          {sopMode === 'skip' && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <div className="text-6xl mb-4">⏭️</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Skipping Third Party SOP
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Validation will use Policy Declaration rules only.
+              </p>
+              <div className="flex gap-4 justify-center mt-6">
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setCurrentStep(3)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Next: Team Checkposts →
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Select Existing Mode */}
           {sopMode === 'select' && (
@@ -1346,15 +1383,19 @@ export default function SingleFileAudit() {
               </>
             )}
             <div className="flex justify-between mb-3">
-              <strong className="text-gray-900">SOP Document:</strong>
-              <span className="text-gray-700">{sopFile?.name || selectedPlaybookName || 'Selected from Database'}</span>
+              <strong className="text-gray-900">Third Party SOP:</strong>
+              <span className="text-gray-700">
+                {sopMode === 'skip' 
+                  ? 'None (Skipped)' 
+                  : sopFile?.name || selectedPlaybookName || 'Selected from Database'}
+              </span>
             </div>
             <div className="flex justify-between mb-3">
-              <strong className="text-gray-900">SOP Rules:</strong>
+              <strong className="text-gray-900">Third Party SOP Rules:</strong>
               <span className="text-gray-700">
                 {(() => {
-                  if (!sopData) {
-                    console.log('No sopData available');
+                  if (sopMode === 'skip' || !sopData) {
+                    console.log('SOP skipped or no sopData available');
                     return '0 rules';
                   }
                   
@@ -1693,12 +1734,12 @@ export default function SingleFileAudit() {
                       </div>
                     )}
                     <div className="bg-green-50 rounded-lg p-3">
-                      <div className="text-xs text-gray-600 mb-1">SOP Document</div>
+                      <div className="text-xs text-gray-600 mb-1">Third Party SOP</div>
                       <div className="font-semibold text-sm text-gray-900 truncate">
-                        {results.playbook_name || 'SOP'}
+                        {results.playbook_name || (sopMode === 'skip' ? 'None (Skipped)' : 'N/A')}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {results.total_rules || totalRules} rules
+                        {getCategoryStats('SOP Rules').total || 0} rules
                       </div>
                     </div>
                     <div className="bg-purple-50 rounded-lg p-3">

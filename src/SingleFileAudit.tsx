@@ -8,8 +8,10 @@ import {
   getPolicyDeclaration,
   getPlaybook,
   getTeamCheckpostFile,
-  getGraphSubgraph
+  getGraphSubgraph,
+  listSchemas
 } from './services/api';
+import NarrativeValidationResults from './components/NarrativeValidationResults';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
@@ -26,6 +28,12 @@ export default function SingleFileAudit() {
   const [policyDeclarationData, setPolicyDeclarationData] = useState<any>(null);
   const [policyDeclarationSearchQuery, setPolicyDeclarationSearchQuery] = useState('');
   const [loadingPolicyDeclarations, setLoadingPolicyDeclarations] = useState(false);
+  
+  // Schema Selection State
+  const [policySchemaVersion, setPolicySchemaVersion] = useState<string>('policy_schema_v1.0.json');
+  const [availablePolicySchemas, setAvailablePolicySchemas] = useState<string[]>([]);
+  const [claimSchemaVersion, setClaimSchemaVersion] = useState<string>('claim_schema_v1.0.json');
+  const [availableClaimSchemas, setAvailableClaimSchemas] = useState<string[]>([]);
 
   // SOP Selection State (Third Party SOP - Optional)
   const [sopMode, setSopMode] = useState<'skip' | 'upload' | 'select'>('skip');
@@ -79,15 +87,59 @@ export default function SingleFileAudit() {
   const [graphLoading, setGraphLoading] = useState(false);
   const [graphError, setGraphError] = useState('');
   const [showAuditDetailsModal, setShowAuditDetailsModal] = useState(false);
+  
+  // Audit Trail View State
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditStatusFilter, setAuditStatusFilter] = useState<'all' | 'PASS' | 'FAIL' | 'WARNING'>('all');
+  const [resultsViewMode, setResultsViewMode] = useState<'grid' | 'narrative'>('narrative'); // New: narrative view by default
 
+  // UPDATED: Reverted to 5-step workflow (removed Policy Declaration step)
   const steps = [
-    { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
-    { number: 2, label: 'Third Party SOP (Optional)', icon: '📄' },
-    { number: 3, label: 'Team Checkposts (Optional)', icon: '📋' },
-    { number: 4, label: 'Upload Claim', icon: '🚗' },
-    { number: 5, label: 'Validate', icon: '⚡' },
-    { number: 6, label: 'Results', icon: '📊' }
+    { number: 1, label: 'Upload SOP', icon: '📄' },
+    { number: 2, label: 'Team Checkposts (Optional)', icon: '📋' },
+    { number: 3, label: 'Upload Claim', icon: '🚗' },
+    { number: 4, label: 'Validate', icon: '⚡' },
+    { number: 5, label: 'Results', icon: '📊' }
   ];
+  
+  // COMMENTED OUT: Policy Declaration step (may be re-enabled in future)
+  // const steps_with_policy = [
+  //   { number: 1, label: 'Select/Upload Policy Declaration', icon: '📋' },
+  //   { number: 2, label: 'Third Party SOP (Optional)', icon: '📄' },
+  //   { number: 3, label: 'Team Checkposts (Optional)', icon: '📋' },
+  //   { number: 4, label: 'Upload Claim', icon: '🚗' },
+  //   { number: 5, label: 'Validate', icon: '⚡' },
+  //   { number: 6, label: 'Results', icon: '📊' }
+  // ];
+
+  // Load available schemas on mount
+  useEffect(() => {
+    // Fetch policy schemas - now returns actual filenames
+    listSchemas('policy')
+      .then(data => {
+        if (data.success && data.schema_files) {
+          setAvailablePolicySchemas(data.schema_files);
+          // Set first schema as default if available
+          if (data.schema_files.length > 0) {
+            setPolicySchemaVersion(data.schema_files[0]);
+          }
+        }
+      })
+      .catch(error => console.error('Error loading policy schemas:', error));
+    
+    // Fetch claim schemas - now returns actual filenames
+    listSchemas('claim')
+      .then(data => {
+        if (data.success && data.schema_files) {
+          setAvailableClaimSchemas(data.schema_files);
+          // Set first schema as default if available
+          if (data.schema_files.length > 0) {
+            setClaimSchemaVersion(data.schema_files[0]);
+          }
+        }
+      })
+      .catch(error => console.error('Error loading claim schemas:', error));
+  }, []);
 
   // Load existing policy declarations, playbooks, checkposts, and claims on mount
   useEffect(() => {
@@ -193,6 +245,13 @@ export default function SingleFileAudit() {
 
   const fetchEvidenceGraph = async () => {
     if (!results?.validation_id) return;
+    console.log('🕸️ Fetching evidence graph with params:', {
+      validation_id: results.validation_id,
+      playbook_id: selectedPlaybookId,
+      document_id: documentId,
+      policy_declaration_id: selectedPolicyDeclarationId,
+      team_checkpost_file_id: selectedTeamCheckpostFileId
+    });
     setGraphLoading(true);
     setGraphError('');
     try {
@@ -204,8 +263,15 @@ export default function SingleFileAudit() {
         team_checkpost_file_id: selectedTeamCheckpostFileId || undefined,
         limit: 200
       });
+      console.log('🕸️ Graph data received:', {
+        nodes: data.nodes?.length || 0,
+        edges: data.edges?.length || 0,
+        count: data.count,
+        success: data.success
+      });
       setGraphData({ nodes: data.nodes || [], edges: data.edges || [], count: data.count });
     } catch (err: any) {
+      console.error('🕸️ Graph fetch error:', err);
       setGraphError(err.message || 'Failed to load evidence graph');
     } finally {
       setGraphLoading(false);
@@ -213,7 +279,8 @@ export default function SingleFileAudit() {
   };
 
   useEffect(() => {
-    if (currentStep === 6 && results?.validation_id) {
+    if (currentStep === 5 && results?.validation_id) {
+      console.log('🕸️ Auto-fetching evidence graph for validation:', results.validation_id);
       fetchEvidenceGraph();
     }
   }, [
@@ -388,7 +455,7 @@ export default function SingleFileAudit() {
     }
 
     try {
-      const data = await uploadDocument(file);
+      const data = await uploadDocument(file, claimSchemaVersion);
 
       setDocumentId(data.document_id);
       setClaimData(data.extracted_data);
@@ -446,7 +513,7 @@ export default function SingleFileAudit() {
     setError('');
 
     try {
-      const data = await uploadPolicyDeclaration(file);
+      const data = await uploadPolicyDeclaration(file, policySchemaVersion);
 
       setSelectedPolicyDeclarationId(data.policy_declaration_id);
       setSelectedPolicyDeclarationName(data.name);
@@ -485,9 +552,9 @@ export default function SingleFileAudit() {
     setValidateLoading(true);
     setError('');
 
-    // Validate required data
-    if (!selectedPolicyDeclarationId) {
-      setError('Please select or upload a Policy Declaration first');
+    // Validate required data - need SOP
+    if (!selectedPlaybookId) {
+      setError('Please select or upload an SOP');
       setValidateLoading(false);
       return;
     }
@@ -499,10 +566,19 @@ export default function SingleFileAudit() {
     }
 
     const requestBody: any = {
-      policy_declaration_id: selectedPolicyDeclarationId,
+      playbook_id: selectedPlaybookId,
       document_id: documentId,
       use_fast_validation: useFastValidation
     };
+    
+    // COMMENTED OUT: Policy Declaration support (may be re-enabled in future)
+    // Include Policy Declaration (Optional)
+    // if (selectedPolicyDeclarationId) {
+    //   requestBody.policy_declaration_id = selectedPolicyDeclarationId;
+    //   console.log('✅ Including Policy Declaration in validation:', selectedPolicyDeclarationId);
+    // } else {
+    //   console.log('⚠️  No Policy Declaration selected (optional)');
+    // }
     
     // Include Third Party SOP (Optional)
     if (selectedPlaybookId) {
@@ -547,6 +623,7 @@ export default function SingleFileAudit() {
       console.log('Validation response:', data);
 
       // Store audit ID and show results
+      console.log('🕸️ Setting results with validation_id:', data.validation_id);
       setResults({
         audit_id: data.audit_id,
         validation_id: data.validation_id,
@@ -577,7 +654,7 @@ export default function SingleFileAudit() {
         validation_timestamp: data.validation_timestamp
       });
 
-      setCurrentStep(6);
+      setCurrentStep(5);
     } catch (err: any) {
       setError(err.message || 'Validation failed');
     } finally {
@@ -634,182 +711,23 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 1: Select/Upload Policy Declaration */}
+      {/* REMOVED: Step 1 - Policy Declaration (Dec 22, 2025)
+          Removed to simplify workflow to 5 steps. Policy Declaration step state variables 
+          remain at top of file but are unused. To restore: check git history for full JSX. */}
+
+      {/* Step 1: Upload SOP (formerly Step 2) */}
       {currentStep === 1 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 1: Select or Upload Policy Declaration 📋
+            Step 1: Upload SOP 📄
           </h2>
           <p className="text-gray-600 mb-6">
-            Choose an existing Policy Declaration from the database or upload a new one. AI will extract declarations.
+            Select an existing SOP or upload a new one. AI will extract validation rules from the document.
           </p>
 
-          {/* Mode Toggle */}
+          {/* Mode Toggle (removed Skip option) */}
           <div className="flex gap-3 mb-6">
-            <button
-              onClick={() => setPolicyDeclarationMode('select')}
-              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${policyDeclarationMode === 'select'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <List className="inline-block w-5 h-5 mr-2" />
-              Select Existing
-            </button>
-            <button
-              onClick={() => setPolicyDeclarationMode('upload')}
-              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${policyDeclarationMode === 'upload'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <Plus className="inline-block w-5 h-5 mr-2" />
-              Upload New
-            </button>
-          </div>
-
-          {/* Select Existing Mode */}
-          {policyDeclarationMode === 'select' && (
-            <div>
-              <div className="mb-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search policy declarations..."
-                    value={policyDeclarationSearchQuery}
-                    onChange={(e) => setPolicyDeclarationSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              {loadingPolicyDeclarations ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">Loading policy declarations...</p>
-                </div>
-              ) : filteredPolicyDeclarations.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600">No policy declarations found.</p>
-                  <button
-                    onClick={() => setPolicyDeclarationMode('upload')}
-                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Upload Your First Policy Declaration
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredPolicyDeclarations.map((pd) => (
-                    <div
-                      key={pd.id}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedPolicyDeclarationId === pd.id
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                      onClick={() => handleSelectExistingPolicyDeclaration(pd)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{pd.name}</h4>
-                          <div className="flex gap-4 mt-2 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {new Date(pd.uploaded_at).toLocaleDateString()}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <FileText className="w-4 h-4" />
-                              {pd.declarations_count || 0} declarations
-                            </span>
-                            {pd.total_cost && (
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="w-4 h-4" />
-                                ${pd.total_cost.toFixed(4)}
-                              </span>
-                            )}
-                            {pd.file_size_formatted && (
-                              <span className="flex items-center gap-1">
-                                <HardDrive className="w-4 h-4" />
-                                {pd.file_size_formatted}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {selectedPolicyDeclarationId === pd.id && (
-                          <CheckCircle2 className="w-6 h-6 text-blue-600" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Upload New Mode */}
-          {policyDeclarationMode === 'upload' && (
-            <div>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <input
-                  type="file"
-                  accept=".pdf,.txt,.docx,.doc"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handlePolicyDeclarationUpload(file);
-                  }}
-                  className="hidden"
-                  id="policy-declaration-upload"
-                />
-                <label
-                  htmlFor="policy-declaration-upload"
-                  className="cursor-pointer inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {policyDeclarationLoading ? 'Processing...' : 'Choose Policy Declaration File'}
-                </label>
-                <p className="text-sm text-gray-500 mt-2">PDF, TXT, DOCX, or DOC files</p>
-              </div>
-              {policyDeclarationFile && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    Selected: <span className="font-semibold">{policyDeclarationFile.name}</span>
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Next Button */}
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={() => {
-                if (selectedPolicyDeclarationId) {
-                  setCurrentStep(2);
-                } else {
-                  setError('Please select or upload a Policy Declaration first');
-                }
-              }}
-              disabled={!selectedPolicyDeclarationId && !policyDeclarationData}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Next: Select SOP →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Third Party SOP (Optional) */}
-      {currentStep === 2 && (
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 2: Third Party SOP (Optional) 📄
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Optionally add a third-party SOP for additional validation rules, or skip this step to proceed with Policy Declaration only.
-          </p>
-
-          {/* Mode Toggle */}
-          <div className="flex gap-3 mb-6">
-            <button
+            {/* <button
               onClick={() => setSopMode('skip')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'skip'
                 ? 'bg-gray-600 text-white'
@@ -817,7 +735,7 @@ export default function SingleFileAudit() {
                 }`}
             >
               Skip
-            </button>
+            </button> */}
             <button
               onClick={() => setSopMode('select')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'select'
@@ -840,32 +758,6 @@ export default function SingleFileAudit() {
             </button>
           </div>
 
-          {/* Skip Mode */}
-          {sopMode === 'skip' && (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <div className="text-6xl mb-4">⏭️</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Skipping Third Party SOP
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Validation will use Policy Declaration rules only.
-              </p>
-              <div className="flex gap-4 justify-center mt-6">
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={() => setCurrentStep(3)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                >
-                  Next: Team Checkposts →
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Select Existing Mode */}
           {sopMode === 'select' && (
@@ -970,7 +862,7 @@ export default function SingleFileAudit() {
 
               <div className="mt-6">
                 <button
-                  onClick={() => setCurrentStep(3)}
+                  onClick={() => setCurrentStep(2)}
                   className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
                   Next: Team Checkposts →
@@ -989,7 +881,7 @@ export default function SingleFileAudit() {
                 ← Back
               </button>
               <button
-                onClick={() => setCurrentStep(3)}
+                onClick={() => setCurrentStep(2)}
                 disabled={!selectedPlaybookId}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
@@ -1000,11 +892,11 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 2: Team Checkposts (Optional) */}
-      {currentStep === 3 && (
+      {/* Step 2: Team Checkposts (Optional) (formerly Step 3) */}
+      {currentStep === 2 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 3: Team Checkposts (Optional) 📋
+            Step 2: Team Checkposts (Optional) 📋
           </h2>
           <p className="text-gray-600 mb-6">
             Add team-specific validation rules from a checklist, select existing checkposts, or skip this step.
@@ -1168,13 +1060,13 @@ export default function SingleFileAudit() {
           {/* Navigation Buttons */}
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => setCurrentStep(2)}
+              onClick={() => setCurrentStep(1)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
-              ← Back
+              ← Back to SOP
             </button>
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => setCurrentStep(3)}
               disabled={checkpostMode === 'upload' && checkpostLoading}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-400"
             >
@@ -1185,11 +1077,11 @@ export default function SingleFileAudit() {
       )}
 
 
-      {/* Step 3: Upload/Select Claim */}
-      {currentStep === 4 && (
+      {/* Step 3: Upload/Select Claim (formerly Step 4) */}
+      {currentStep === 3 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Step 4: Select or Upload Claim Document 🚗
+            Step 3: Select or Upload Claim Document 🚗
           </h2>
           <p className="text-gray-600 mb-6">
             Choose an existing extracted claim or upload a new one. Already extracted claims skip AI processing.
@@ -1301,6 +1193,28 @@ export default function SingleFileAudit() {
           {/* Upload New Claim Mode */}
           {claimMode === 'upload' && (
             <div>
+              {/* Schema Version Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Extraction Schema File
+                </label>
+                <select
+                  value={claimSchemaVersion}
+                  onChange={(e) => setClaimSchemaVersion(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={claimLoading}
+                >
+                  {availableClaimSchemas.map((schemaFile) => (
+                    <option key={schemaFile} value={schemaFile}>
+                      {schemaFile}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  📁 config/extraction_schemas/ | Controls extraction fields & validation
+                </p>
+              </div>
+
               <div
                 className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
                   claimLoading
@@ -1346,14 +1260,14 @@ export default function SingleFileAudit() {
           {/* Navigation Buttons */}
           <div className="flex gap-4 mt-6">
             <button
-              onClick={() => setCurrentStep(3)}
+              onClick={() => setCurrentStep(2)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
-              ← Back
+              ← Back to Checkposts
             </button>
             {claimData && !claimLoading && (
               <button
-                onClick={() => setCurrentStep(5)}
+                onClick={() => setCurrentStep(4)}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
                 Next: Validate →
@@ -1363,10 +1277,10 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 4: Validate */}
-      {currentStep === 5 && (
+      {/* Step 4: Validate (formerly Step 5) */}
+      {currentStep === 4 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 5: Run Validation ⚡</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 4: Run Validation ⚡</h2>
           <p className="text-gray-600 mb-6">Ready to validate the claim against extracted rules.</p>
 
           <div className="bg-blue-50 rounded-lg p-6 mb-6">
@@ -1503,11 +1417,11 @@ export default function SingleFileAudit() {
 
           <div className="flex gap-4">
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => setCurrentStep(3)}
               className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
               disabled={validateLoading}
             >
-              ← Back
+              ← Back to Claim
             </button>
             <button
               onClick={handleValidate}
@@ -1520,9 +1434,39 @@ export default function SingleFileAudit() {
         </div>
       )}
 
-      {/* Step 5: Results */}
-      {currentStep === 6 && results && (() => {
+      {/* Step 5: Results (formerly Step 6) */}
+      {currentStep === 5 && !results && (
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center py-12">
+            <p className="text-gray-600">Loading validation results...</p>
+          </div>
+        </div>
+      )}
+      
+      {currentStep === 5 && results && (() => {
         const ruleChecks = results.rule_checks || [];
+        
+        // Show message if no rule checks available yet
+        if (ruleChecks.length === 0 && !validateLoading) {
+          return (
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-6">
+                Step 5: Validation Results 📊
+              </h2>
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <p className="text-gray-600 mb-4">No validation results available yet.</p>
+                <p className="text-sm text-gray-500">Audit ID: {results.audit_id}</p>
+                <button
+                  onClick={() => setCurrentStep(4)}
+                  className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  ← Back to Validate
+                </button>
+              </div>
+            </div>
+          );
+        }
+        
         const baseRules = ruleChecks.length;
         const passedCount = ruleChecks.filter((c: any) => c.status === 'PASS').length;
         const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length || results.errors?.length || 0;
@@ -1604,7 +1548,9 @@ export default function SingleFileAudit() {
           }
         }
 
-        const totalRules = combinedRules.length || baseRules;
+        // Total rules that were actually validated (exclude N/A)
+        const appliedRules = combinedRules.filter((r: any) => r.status !== 'N/A');
+        const totalRules = appliedRules.length || combinedRules.length || baseRules;
 
         const getCategoryStats = (cat: string) => {
           const items = combinedRules.filter((c: any) => categorizeRule(c) === cat);
@@ -1651,26 +1597,26 @@ export default function SingleFileAudit() {
         return (
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Top Summary Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-8 text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-3 text-white">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="text-6xl">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">
                     {results.is_valid ? '✅' : '❌'}
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold mb-2">Claim Validation Complete</h1>
-                    <p className="text-blue-100 text-lg">
+                    <h1 className="text-2xl font-bold mb-1">Claim Validation Complete</h1>
+                    <p className="text-blue-100 text-sm">
                       Claim ID: {results.claim_id || results.document_name || 'Unknown'}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-5xl font-bold">{complianceScore}%</div>
-                    <div className="text-blue-100 text-sm">Compliance Score</div>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-4xl font-bold">{complianceScore}%</div>
+                    <div className="text-blue-100 text-xs">Compliance Score</div>
                     <button
                       onClick={() => setShowAuditDetailsModal(true)}
-                      className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-colors border border-white/30"
+                      className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-colors border border-white/30"
                     >
                       Audit Details
                     </button>
@@ -1678,22 +1624,22 @@ export default function SingleFileAudit() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-bold">{totalRules}</div>
-                  <div className="text-blue-100 text-sm">Total Rules</div>
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  <div className="text-xl font-bold">{totalRules}</div>
+                  <div className="text-blue-100 text-xs">Total Rules</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-green-300">{passedCount}</div>
-                  <div className="text-blue-100 text-sm">Passed</div>
+                <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  <div className="text-xl font-bold text-green-300">{passedCount}</div>
+                  <div className="text-blue-100 text-xs">Passed</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-red-300">{failedCount}</div>
-                  <div className="text-blue-100 text-sm">Failed</div>
+                <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  <div className="text-xl font-bold text-red-300">{failedCount}</div>
+                  <div className="text-blue-100 text-xs">Failed</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-yellow-300">{warningCount}</div>
-                  <div className="text-blue-100 text-sm">Warnings</div>
+                <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  <div className="text-xl font-bold text-yellow-300">{warningCount}</div>
+                  <div className="text-blue-100 text-xs">Warnings</div>
                 </div>
               </div>
             </div>
@@ -1852,112 +1798,320 @@ export default function SingleFileAudit() {
 
               {/* Main Content */}
               <main className="flex flex-col gap-4">
-                {/* Rules Display */}
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col">
-                  <div className="border-b border-gray-200 bg-gray-50">
-                    <div className="flex gap-1 px-4 py-2 text-sm font-semibold text-gray-700">
-                      {(['All', 'Policy Declarations', 'SOP Rules', 'Team Checkposts'] as const).map((tab) => {
-                        const count = tabTotal(tab);
-                        const isActive = rulesTab === tab;
-                        return (
-                          <button
-                            key={tab}
-                            onClick={() => setRulesTab(tab)}
-                            className={`px-4 py-2 rounded-t-md transition-colors ${
-                              isActive
-                                ? 'border-b-2 border-blue-600 text-blue-600 bg-white'
-                                : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                          >
-                            {tab} ({count})
-                          </button>
-                        );
-                      })}
+                {/* Search and Filter Bar */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={auditSearchQuery}
+                        onChange={(e) => setAuditSearchQuery(e.target.value)}
+                        placeholder="Search rules, details, evidence..."
+                        className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={auditStatusFilter}
+                        onChange={(e) => setAuditStatusFilter(e.target.value as any)}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="PASS">✅ Pass Only</option>
+                        <option value="FAIL">❌ Fail Only</option>
+                        <option value="WARNING">⚠️ Warning Only</option>
+                      </select>
+                      <select
+                        value={rulesTab}
+                        onChange={(e) => setRulesTab(e.target.value as any)}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="All">All Categories ({totalRules})</option>
+                        <option value="Policy Declarations">Policy Declarations ({tabTotal('Policy Declarations')})</option>
+                        <option value="SOP Rules">SOP Rules ({tabTotal('SOP Rules')})</option>
+                        <option value="Team Checkposts">Team Checkposts ({tabTotal('Team Checkposts')})</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Narrative View - Always visible */}
+                <NarrativeValidationResults results={results} />
+
+                {/* Audit Trail Grid - Hidden */}
+                {false && (
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  {/* Grid Header */}
+                  <div className="grid grid-cols-3 bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
+                    <div className="px-4 py-3 text-center font-bold text-sm text-blue-900 uppercase tracking-wide border-r border-gray-200">
+                      📄 Source Documents
+                    </div>
+                    <div className="px-4 py-3 text-center font-bold text-sm text-blue-900 uppercase tracking-wide border-r border-gray-200">
+                      ⚙️ Validation Logic
+                    </div>
+                    <div className="px-4 py-3 text-center font-bold text-sm text-blue-900 uppercase tracking-wide">
+                      ✓ Result & Evidence
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto max-h-[600px]">
-                    {groupedRules
-                      .filter((group) => rulesTab === 'All' || group.category === rulesTab)
-                      .map((group) => (
-                        <div key={group.category} className="border-b border-gray-200">
-                          <div className={`px-6 py-3 border-b border-gray-100 ${
-                            group.category === 'Policy Declarations'
-                              ? 'bg-blue-50'
-                              : group.category === 'SOP Rules'
-                                ? 'bg-green-50'
-                                : group.category === 'Team Checkposts'
-                                  ? 'bg-purple-50'
-                                  : 'bg-gray-50'
-                          }`}>
-                            <div className="flex items-center justify-between">
-                              <h3 className={`font-semibold text-sm ${categoryBadge(group.category)}`}>
-                                {group.category} ({group.stats.total} {group.stats.total === 1 ? 'rule' : 'rules'})
-                              </h3>
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-green-700 font-medium">{group.stats.pass} passed</span>
-                                <span className="text-red-700 font-medium">{group.stats.fail} failed</span>
-                                {group.stats.warn > 0 && (
-                                  <span className="text-yellow-700 font-medium">{group.stats.warn} warning</span>
+                  {/* Audit Rows */}
+                  <div className="max-h-[600px] overflow-y-auto">
+                    {(() => {
+                      // Filter rules based on search and status
+                      const filteredRules = combinedRules.filter((check: any) => {
+                        const category = categorizeRule(check);
+                        const matchesTab = rulesTab === 'All' || category === rulesTab;
+                        const matchesStatus = auditStatusFilter === 'all' || check.status === auditStatusFilter;
+                        const searchLower = auditSearchQuery.toLowerCase();
+                        const matchesSearch = !searchLower || 
+                          (check.rule || '').toLowerCase().includes(searchLower) ||
+                          (check.details || '').toLowerCase().includes(searchLower) ||
+                          (check.issue || '').toLowerCase().includes(searchLower) ||
+                          category.toLowerCase().includes(searchLower);
+                        return matchesTab && matchesStatus && matchesSearch;
+                      });
+
+                      if (filteredRules.length === 0) {
+                        return (
+                          <div className="py-12 text-center text-gray-500">
+                            <p className="text-sm">No rules match your filters.</p>
+                          </div>
+                        );
+                      }
+
+                      return filteredRules.map((check: any, idx: number) => {
+                        const category = categorizeRule(check);
+                        const ruleId = check.id || check.rule_id || `${category.substring(0, 2).toUpperCase()}-${idx + 1}`;
+                        
+                        // Parse JSON if check.rule is a JSON string
+                        let parsedRule: any = null;
+                        let ruleTitle = '';
+                        let ruleDetails = '';
+                        let ruleCategory = category;
+                        let ruleSeverity = '';
+                        
+                        if (check.rule && typeof check.rule === 'string') {
+                          try {
+                            // Try to parse as JSON
+                            if (check.rule.trim().startsWith('{')) {
+                              parsedRule = JSON.parse(check.rule);
+                              ruleTitle = parsedRule.declaration_text || parsedRule.rule_text || parsedRule.title || check.rule;
+                              ruleCategory = parsedRule.category || category;
+                              ruleSeverity = parsedRule.severity || '';
+                              ruleDetails = parsedRule.value ? `Value: ${parsedRule.value}` : '';
+                            } else {
+                              ruleTitle = check.rule;
+                            }
+                          } catch (e) {
+                            // If parsing fails, use as-is
+                            ruleTitle = check.rule;
+                          }
+                        } else if (check.rule && typeof check.rule === 'object') {
+                          // If it's already an object
+                          parsedRule = check.rule;
+                          ruleTitle = parsedRule.declaration_text || parsedRule.rule_text || parsedRule.title || 'Untitled Rule';
+                          ruleCategory = parsedRule.category || category;
+                          ruleSeverity = parsedRule.severity || '';
+                          ruleDetails = parsedRule.value ? `Value: ${parsedRule.value}` : '';
+                        } else {
+                          ruleTitle = check.rule || 'Untitled Rule';
+                        }
+                        
+                        // Use check.details if available, otherwise use extracted details
+                        const displayDetails = check.details || ruleDetails;
+                        
+                        return (
+                          <div
+                            key={`audit-row-${idx}`}
+                            className={`grid grid-cols-3 border-b border-gray-200 min-h-[120px] transition-colors hover:bg-gray-50 ${
+                              check.status === 'PASS'
+                                ? 'border-l-4 border-green-500'
+                                : check.status === 'FAIL'
+                                  ? 'border-l-4 border-red-500'
+                                  : check.status === 'WARNING'
+                                    ? 'border-l-4 border-yellow-500'
+                                    : 'border-l-4 border-gray-300'
+                            }`}
+                          >
+                            {/* Column 1: Source Document */}
+                            <div className="px-5 py-4 border-r border-gray-200">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                                  {ruleCategory}
+                                </div>
+                                {ruleSeverity && (
+                                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                    ruleSeverity === 'critical' ? 'bg-red-100 text-red-800' :
+                                    ruleSeverity === 'high' ? 'bg-orange-100 text-orange-800' :
+                                    ruleSeverity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {ruleSeverity}
+                                  </span>
                                 )}
                               </div>
+                              <div className="flex items-start gap-2 mb-2">
+                                <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold flex-shrink-0">
+                                  {ruleId}
+                                </span>
+                                <div className="text-sm font-semibold text-gray-900 flex-1 leading-snug">
+                                  {ruleTitle}
+                                </div>
+                              </div>
+                              {displayDetails && (
+                                <div className="text-xs text-gray-600 leading-relaxed mt-2">
+                                  {displayDetails}
+                                </div>
+                              )}
+                              {parsedRule?.declaration_type && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                    Type: {parsedRule.declaration_type}
+                                  </span>
+                                  {parsedRule.validation_required === 'true' && (
+                                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                      ⚠️ Validation Required
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {check.source_section && (
+                                <div className="mt-2 text-xs text-blue-600 font-medium">
+                                  📄 {check.source_section}
+                                </div>
+                              )}
                             </div>
-                          </div>
 
-                          <div className="divide-y divide-gray-100">
-                            {group.items.length === 0 ? (
-                              <div className="px-6 py-4 text-sm text-gray-500">No rules found in this category.</div>
-                            ) : (
-                              group.items.map((check: any, idx: number) => (
-                                <div
-                                  key={`${group.category}-${idx}`}
-                                  className={`px-6 py-4 hover:bg-gray-50 transition-colors ${
-                                    check.status === 'FAIL'
-                                      ? 'border-l-4 border-red-500'
-                                      : check.status === 'WARNING'
-                                        ? 'border-l-4 border-yellow-500'
-                                        : ''
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-4">
-                                    <div className="text-2xl flex-shrink-0">{ruleIcon(check.status)}</div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-semibold text-gray-900 mb-1 break-words">
-                                        {check.rule || 'Untitled rule'}
-                                      </div>
-                                      {check.details && (
-                                        <div className="text-sm text-gray-600 mb-2 break-words">
-                                          {check.details}
-                                        </div>
-                                      )}
-                                      {check.issue && (
-                                        <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
-                                          <strong>Issue:</strong> {check.issue}
-                                        </div>
-                                      )}
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${pillClass(check.status)}`}>
-                                          {check.status || 'N/A'}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                          {group.category}
-                                        </span>
-                                        {check.field && (
-                                          <span className="text-xs text-gray-500">
-                                            Field: {check.field}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
+                            {/* Column 2: Validation Logic */}
+                            <div className="px-5 py-4 border-r border-gray-200">
+                              <div className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">
+                                {check.validation_type || 'Rule Validation'}
+                              </div>
+                              {check.validation_logic || check.logic || check.condition ? (
+                                <div className="bg-purple-50 border-l-3 border-purple-500 rounded p-3 mt-2">
+                                  <div className="font-mono text-xs text-gray-800 space-y-1">
+                                    {(check.validation_logic || check.logic || check.condition).split('\n').map((line: string, i: number) => (
+                                      <div key={i}>{line}</div>
+                                    ))}
                                   </div>
                                 </div>
-                              ))
-                            )}
+                              ) : check.field || check.expected_value || parsedRule?.value ? (
+                                <div className="bg-purple-50 border-l-3 border-purple-500 rounded p-3 mt-2">
+                                  <div className="font-mono text-xs text-gray-800 space-y-1">
+                                    {check.field && <div>Field: {check.field}</div>}
+                                    {check.expected_value && <div>Expected: {check.expected_value}</div>}
+                                    {check.actual_value && <div>Actual: {check.actual_value}</div>}
+                                    {parsedRule?.value && !check.expected_value && (
+                                      <div>Policy Value: {parsedRule.value}</div>
+                                    )}
+                                    {check.status === 'N/A' && (
+                                      <div className="text-gray-500 italic mt-1">
+                                        Rule does not apply to this claim (N/A)
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-600 italic mt-2 p-3 bg-gray-50 rounded">
+                                  {check.status === 'N/A' 
+                                    ? 'Policy rule extracted. Validation pending against claim document.'
+                                    : 'Validating rule against claim data'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Column 3: Result & Evidence */}
+                            <div className="px-5 py-4">
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold mb-3 ${
+                                check.status === 'PASS'
+                                  ? 'bg-green-100 text-green-800 border border-green-200'
+                                  : check.status === 'FAIL'
+                                    ? 'bg-red-100 text-red-800 border border-red-200'
+                                    : check.status === 'WARNING'
+                                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                      : 'bg-gray-100 text-gray-700 border border-gray-200'
+                              }`}>
+                                {ruleIcon(check.status)} {check.status || 'N/A'}
+                              </div>
+                              
+                              {check.status === 'PASS' && (
+                                <div className="text-sm text-gray-900 mb-2">
+                                  ✓ Rule satisfied. Claim data meets requirements.
+                                </div>
+                              )}
+                              
+                              {check.status === 'FAIL' && (
+                                <>
+                                  <div className="text-sm text-red-900 mb-2 font-medium">
+                                    ✗ Rule violated
+                                  </div>
+                                  {check.issue && (
+                                    <div className="text-xs text-red-800 bg-red-50 p-2 rounded mb-2">
+                                      <strong>Issue:</strong> {check.issue}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              
+                              {check.status === 'WARNING' && (
+                                <div className="text-sm text-yellow-900 mb-2">
+                                  ⚠️ Warning: Review required
+                                </div>
+                              )}
+                              
+                              {check.status === 'N/A' && (
+                                <div className="text-sm text-gray-600 mb-2">
+                                  Policy rule extracted from source document
+                                </div>
+                              )}
+
+                              {/* Evidence Chain */}
+                              {(check.evidence || check.matched_fields || check.source_reference || parsedRule) && (
+                                <div className="mt-3">
+                                  <div className="text-xs font-semibold text-gray-700 mb-1">Evidence:</div>
+                                  <ul className="space-y-1 text-xs text-gray-600">
+                                    {parsedRule?.category && (
+                                      <li className="flex items-start gap-1">
+                                        <span className="text-gray-400">•</span>
+                                        <span>Category: {parsedRule.category}</span>
+                                      </li>
+                                    )}
+                                    {parsedRule?.declaration_type && (
+                                      <li className="flex items-start gap-1">
+                                        <span className="text-gray-400">•</span>
+                                        <span>Type: {parsedRule.declaration_type}</span>
+                                      </li>
+                                    )}
+                                    {check.source_reference && (
+                                      <li className="flex items-start gap-1">
+                                        <span className="text-gray-400">•</span>
+                                        <span>Source: {check.source_reference}</span>
+                                      </li>
+                                    )}
+                                    {check.matched_fields && (
+                                      <li className="flex items-start gap-1">
+                                        <span className="text-gray-400">•</span>
+                                        <span>Matched: {check.matched_fields}</span>
+                                      </li>
+                                    )}
+                                    {check.evidence && (
+                                      <li className="flex items-start gap-1">
+                                        <span className="text-gray-400">•</span>
+                                        <span>{check.evidence}</span>
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
+                )}
               </main>
             </div>
 
@@ -1986,13 +2140,16 @@ export default function SingleFileAudit() {
           <div className="p-4">
             {!graphData && !graphLoading && (
               <div className="text-sm text-gray-600">
-                Evidence graph will appear here after the first validation.
+                Evidence graph will appear here after the first validation. Click "Refresh evidence" to load it.
               </div>
             )}
             {graphLoading && (
-              <div className="text-sm text-gray-600">Loading graph data...</div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span>Loading graph data...</span>
+              </div>
             )}
-            {graphData && !graphLoading && (
+            {graphData && !graphLoading && (graphData.nodes.length > 0 || graphData.edges.length > 0) && (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
                   <div className="text-sm font-semibold text-gray-800 mb-2">
@@ -2034,6 +2191,14 @@ export default function SingleFileAudit() {
                       );
                     })}
                   </div>
+                </div>
+              </div>
+            )}
+            {graphData && !graphLoading && graphData.nodes.length === 0 && graphData.edges.length === 0 && (
+              <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="font-medium mb-1">⚠️ Graph data is empty</div>
+                <div className="text-xs">
+                  The evidence graph exists but contains no nodes or edges. This might happen if the validation hasn't built the graph yet. Try clicking "Refresh evidence" or running a new validation.
                 </div>
               </div>
             )}

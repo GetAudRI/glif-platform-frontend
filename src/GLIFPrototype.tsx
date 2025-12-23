@@ -15,6 +15,8 @@ import {
   saveRulesToJSON,  // MANUAL SAVE: Added save rules function
   listDocuments, getDocument, deleteDocument, // DOCUMENTS: Added document delete
   generateClaimsFromSOP,  // CLAIM GENERATION: Added claim generation function
+  generateClaimsFromSchema,  // NEW: JSON Schema-based claim generation
+  listSchemas,  // NEW: List available schemas
   listPolicyDeclarations, getPolicyDeclaration, deletePolicyDeclaration,  // POLICY DECLARATIONS
   getTeamCheckpostFile, deleteTeamCheckpostFile, // TEAM CHECKPOSTS
   deletePlaybook, // SOP delete
@@ -28,6 +30,7 @@ import RulesEngineDashboard from './components/RulesEngineDashboard';
 import AuditResults from './components/AuditResults';
 import ViewExtractions from './components/ViewExtractions';
 import DocumentViewer from './components/DocumentViewer';
+import NarrativeValidationResults from './components/NarrativeValidationResults';
 // Types
 type GNode = { 
   id: string; 
@@ -195,7 +198,7 @@ export default function GLIFPrototype() {
   const [selectedConcept, setSelectedConcept] = useState('concept1_validation_story.html');
   // ==================== END CORPUS TAB STATE ====================
   
-  // ==================== CLAIM GENERATOR COMPONENT ====================
+  // ==================== OLD CLAIM GENERATOR (SOP-based) ====================
   function ClaimGenerator() {
     const [sopFile, setSopFile] = useState<File | null>(null);
     const [numClaims, setNumClaims] = useState(5);
@@ -313,7 +316,214 @@ export default function GLIFPrototype() {
       </div>
     );
   }
-  // ==================== END CLAIM GENERATOR COMPONENT ====================
+  // ==================== END OLD CLAIM GENERATOR ====================
+
+  // ==================== NEW: SCHEMA-BASED CLAIM GENERATOR ====================
+  function SchemaBasedClaimGenerator() {
+    const [docType, setDocType] = useState('claim');
+    const [schemaVersion, setSchemaVersion] = useState('claim_schema_v1.0.json');
+    const [availableSchemas, setAvailableSchemas] = useState<string[]>([]);
+    const [numCompliant, setNumCompliant] = useState(1);
+    const [numNoncompliant, setNumNoncompliant] = useState(1);
+    const [generating, setGenerating] = useState(false);
+    const [result, setResult] = useState<any>(null);
+    const [error, setError] = useState('');
+
+    // Load available schemas on mount
+    useEffect(() => {
+      const loadSchemas = async () => {
+        try {
+          const data = await listSchemas(docType);
+          if (data.success && data.schema_files) {
+            setAvailableSchemas(data.schema_files);
+            // Set first schema as default if available
+            if (data.schema_files.length > 0) {
+              setSchemaVersion(data.schema_files[0]);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading schemas:', err);
+        }
+      };
+      loadSchemas();
+    }, [docType]);
+
+    const handleGenerate = async () => {
+      setGenerating(true);
+      setError('');
+      setResult(null);
+
+      try {
+        const data = await generateClaimsFromSchema(
+          docType,
+          schemaVersion,
+          numCompliant,
+          numNoncompliant,
+          true
+        );
+        setResult(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to generate claims from schema');
+      } finally {
+        setGenerating(false);
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Document Type
+            </label>
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              disabled={generating}
+            >
+              <option value="claim">Claim</option>
+              <option value="policy">Policy</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Schema File
+            </label>
+            <select
+              value={schemaVersion}
+              onChange={(e) => setSchemaVersion(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              disabled={generating}
+            >
+              {availableSchemas.map((schemaFile) => (
+                <option key={schemaFile} value={schemaFile}>
+                  {schemaFile}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Actual file from: config/extraction_schemas/
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Compliant Claims (✅ Will PASS)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="5"
+              value={numCompliant}
+              onChange={(e) => setNumCompliant(parseInt(e.target.value) || 1)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              disabled={generating}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Non-Compliant Claims (❌ Will FAIL)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="5"
+              value={numNoncompliant}
+              onChange={(e) => setNumNoncompliant(parseInt(e.target.value) || 1)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              disabled={generating}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {generating ? (
+            <>
+              <Clock className="w-5 h-5 animate-spin" />
+              Generating Claims from Schema...
+            </>
+          ) : (
+            <>
+              <FileText className="w-5 h-5" />
+              🎯 Generate Claims
+            </>
+          )}
+        </button>
+
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            ❌ {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-green-900 mb-2">
+                  ✅ Successfully generated {result.num_claims_generated} claims!
+                </p>
+                <p className="text-sm text-green-700 mb-3">
+                  Schema: <code className="bg-green-100 px-2 py-1 rounded">{docType}_schema_v{result.schema_version}.json</code>
+                </p>
+                
+                {result.saved_files && result.saved_files.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-green-800">Generated Files:</p>
+                    {result.saved_files.map((file: any, idx: number) => (
+                      <div key={idx} className="bg-white p-3 rounded border border-green-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          {file.compliance_status === 'compliant' ? (
+                            <span className="text-green-600">✅</span>
+                          ) : (
+                            <span className="text-red-600">❌</span>
+                          )}
+                          <code className="text-xs font-mono text-gray-700">{file.filename}</code>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Claim: {file.claim_number} | 
+                          Status: {file.compliance_status === 'compliant' ? 'PASS' : 'FAIL'}
+                        </p>
+                        {file.expected_violations && file.expected_violations.length > 0 && (
+                          <div className="mt-2 text-xs text-red-600">
+                            <p className="font-medium">Expected Violations:</p>
+                            <ul className="list-disc list-inside ml-2">
+                              {file.expected_violations.map((v: string, i: number) => (
+                                <li key={i}>{v}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm font-medium text-blue-900 mb-2">🎯 Next Steps:</p>
+                  <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>Go to <strong>Single File Audit</strong> tab</li>
+                    <li>Upload the generated claims (from: {result.output_directory})</li>
+                    <li>Use the <strong>same schema version</strong> for validation</li>
+                    <li>Verify compliant claims PASS ✅ and non-compliant claims FAIL ❌</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  // ==================== END SCHEMA-BASED CLAIM GENERATOR ====================
   
   // ==================== FINAL SUMMARY STATE ====================
   const [showFinalSummary, setShowFinalSummary] = useState(false);
@@ -886,14 +1096,35 @@ export default function GLIFPrototype() {
               </CardContent>
             </Card>
 
-            {/* Claim Generator (Hidden from customers) */}
+            {/* OLD: SOP-based Claim Generator */}
             <Card className="border-2 border-orange-200 bg-orange-50">
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900">Sample Claims Generator</h2>
-                <p className="text-sm text-gray-600 mt-1">Generate test claims from SOP (Internal Use Only)</p>
+                <h2 className="text-xl font-semibold text-gray-900">📄 Claims Generator (SOP-based)</h2>
+                <p className="text-sm text-gray-600 mt-1">Generate test claims from SOP rules (Legacy Method)</p>
               </CardHeader>
               <CardContent>
                 <ClaimGenerator />
+              </CardContent>
+            </Card>
+
+            {/* NEW: Schema-based Claim Generator */}
+            <Card className="border-2 border-green-200 bg-green-50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">🎯 Schema-Based Claims Generator</h2>
+                    <p className="text-sm text-gray-600 mt-1">Generate claims from JSON schema - Perfect for demos!</p>
+                  </div>
+                  <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full">NEW</span>
+                </div>
+                <div className="mt-3 p-3 bg-white border border-green-300 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>✨ Why use this?</strong> Same schema for generation AND validation = predictable test data!
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <SchemaBasedClaimGenerator />
               </CardContent>
             </Card>
           </div>
@@ -2669,65 +2900,14 @@ export default function GLIFPrototype() {
                 </div>
               </div>
 
-              {/* Rule Checks Section */}
-              <div className="space-y-3">
+              {/* Rule Checks Section - Using Narrative Component */}
+              <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Rule-by-Rule Breakdown
                 </h3>
 
                 {drillDownClaim.rule_checks && Array.isArray(drillDownClaim.rule_checks) && drillDownClaim.rule_checks.length > 0 ? (
-                  drillDownClaim.rule_checks.map((check: any, idx: number) => {
-                    // Defensive: ensure check exists and has required fields
-                    if (!check) return null;
-                    
-                    const status = check.status || 'UNKNOWN';
-                    const ruleName = check.rule || 'Unnamed Rule';
-                    const details = check.details || '';
-                    
-                    return (
-                      <div
-                        key={idx}
-                        className={`rounded-lg border-2 p-4 ${
-                          status === 'PASS'
-                            ? 'bg-green-50 border-green-300'
-                            : status === 'FAIL'
-                            ? 'bg-red-50 border-red-300'
-                            : 'bg-yellow-50 border-yellow-300'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-2xl ${
-                                status === 'PASS' ? 'text-green-600' : 
-                                status === 'FAIL' ? 'text-red-600' : 'text-yellow-600'
-                              }`}>
-                                {status === 'PASS' ? '✅' : 
-                                 status === 'FAIL' ? '❌' : '⚠️'}
-                              </span>
-                              <h4 className="font-semibold text-gray-900 text-lg">
-                                {ruleName}
-                              </h4>
-                            </div>
-                            {details && (
-                              <p className="text-sm text-gray-700 mt-2 ml-9">
-                                {details}
-                              </p>
-                            )}
-                          </div>
-                          <span className={`ml-4 px-3 py-1 rounded-full text-xs font-bold ${
-                            status === 'PASS'
-                              ? 'bg-green-200 text-green-800'
-                              : status === 'FAIL'
-                              ? 'bg-red-200 text-red-800'
-                              : 'bg-yellow-200 text-yellow-800'
-                          }`}>
-                            {status}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
+                  <NarrativeValidationResults results={drillDownClaim} compact={true} />
                 ) : (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                     <p className="text-blue-900 font-semibold mb-2">📋 Rule Details Not Available</p>

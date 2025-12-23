@@ -637,10 +637,12 @@ export async function getPolicyDeclaration(policyDeclarationId: number) {
 /**
  * Upload Policy Declaration file and extract declarations
  */
-export async function uploadPolicyDeclaration(file: File) {
+export async function uploadPolicyDeclaration(file: File, schemaVersion: string = 'stable') {
   try {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('schema_version', schemaVersion);
+    formData.append('use_schema', 'true');
     
     const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/upload`, {
       method: 'POST',
@@ -682,6 +684,44 @@ export async function deletePolicyDeclaration(policyDeclarationId: number) {
   }
 }
 
+/**
+ * List available schema versions for a document type
+ */
+export async function listSchemas(docType: string) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/schemas/${docType}`);
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to list schemas');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error listing schemas:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get specific schema version
+ */
+export async function getSchema(docType: string, version: string) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/schemas/${docType}/${version}`);
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to get schema');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error getting schema:', error);
+    throw error;
+  }
+}
+
 // ==================== END POLICY DECLARATIONS API ====================
 
 // ==================== INVOICE APPROVAL API ====================
@@ -715,10 +755,12 @@ export async function uploadInvoiceApprovalSOP(file: File) {
 /**
  * Upload document (claim/contract) - returns document with already_extracted flag
  */
-export async function uploadDocument(file: File) {
+export async function uploadDocument(file: File, schemaVersion: string = 'stable') {
   try {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('schema_version', schemaVersion);
+    formData.append('use_schema', 'true');
 
     const response = await fetch(`${API_BASE}/api/audit-oversight/documents/upload`, {
       method: 'POST',
@@ -1147,6 +1189,44 @@ export async function generateClaimsFromSOP(
   }
 }
 
+/**
+ * Generate claims from JSON schema (NEW - schema-driven approach)
+ */
+export async function generateClaimsFromSchema(
+  docType: string = 'claim',
+  schemaVersion: string = 'stable',
+  numCompliant: number = 1,
+  numNoncompliant: number = 1,
+  saveFiles: boolean = true
+) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/generate-claims-from-schema`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doc_type: docType,
+        schema_version: schemaVersion,
+        num_compliant: numCompliant,
+        num_noncompliant: numNoncompliant,
+        save_files: saveFiles
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to generate claims from schema');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error generating claims from schema:', error);
+    throw error;
+  }
+}
+
 // ==================== END CLAIM GENERATION API ====================
 
 // ==================== GRAPH / EVIDENCE API ====================
@@ -1167,10 +1247,22 @@ export async function getGraphSubgraph(params: {
   if (params.validation_id) query.append('validation_id', params.validation_id.toString());
   if (params.limit) query.append('limit', params.limit.toString());
 
-  const response = await fetch(`${API_BASE}/api/graph/subgraph?${query.toString()}`);
+  const url = `${API_BASE}/api/graph/subgraph?${query.toString()}`;
+  console.log('🕸️ [API] Fetching graph from:', url);
+  
+  const response = await fetch(url);
+  console.log('🕸️ [API] Response status:', response.status, response.statusText);
+  
   const data = await response.json();
+  console.log('🕸️ [API] Response data:', data);
+  
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load evidence graph: ${response.status}`);
+  }
+  
   if (!data.success) {
     throw new Error(data.error || 'Failed to load evidence graph');
   }
+  
   return data;
 }

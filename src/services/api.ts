@@ -1227,6 +1227,40 @@ export async function generateClaimsFromSchema(
   }
 }
 
+/**
+ * Generate matching SOP and Claim schemas from SOP text
+ */
+export async function generateSchemaPair(
+  sopText: string,
+  schemaName: string,
+  schemaVersion: string = '1.0'
+) {
+  try {
+    const response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sop_text: sopText,
+        schema_name: schemaName,
+        schema_version: schemaVersion
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to generate schema pair');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error generating schema pair:', error);
+    throw error;
+  }
+}
+
 // ==================== END CLAIM GENERATION API ====================
 
 // ==================== GRAPH / EVIDENCE API ====================
@@ -1262,6 +1296,27 @@ export async function getGraphSubgraph(params: {
   
   if (!data.success) {
     throw new Error(data.error || 'Failed to load evidence graph');
+  }
+  
+  return data;
+}
+
+// ==================== VALIDATIONS HISTORY API ====================
+
+/**
+ * Get recent validations for viewing validation history
+ */
+export async function getRecentValidations(limit: number = 50) {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/validations/recent?limit=${limit}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch validations: ${response.status} ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to load validations');
   }
   
   return data;

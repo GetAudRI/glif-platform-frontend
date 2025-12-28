@@ -23,6 +23,8 @@ import {
   listAuditPlaybooks, listTeamCheckpostFiles, // Audit corpus lists (DB-backed)
 } from './services/api';
 import SingleFileAudit from './SingleFileAudit';
+import SingleFileAuditResults from './SingleFileAuditResults';
+import TestD from './TestD';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
 import LiveAuditMonitor from './LiveAuditMonitor';
 import CostAnalytics from './components/CostAnalytics';
@@ -1020,8 +1022,10 @@ export default function GLIFPrototype() {
         {/* Tab Navigation */}
         <div className="mb-8 flex flex-wrap gap-3">
           <TabButton id="connect" label="Connectors" icon={Database} />
+          <TabButton id="testd" label="TestD" icon={Activity} />
           <TabButton id="corpus" label="Corpus" icon={FileText} />
           <TabButton id="single-audit" label="Single File Audit" icon={Zap} />
+          <TabButton id="single-audit-results" label="Single File Audit Results" icon={BarChart3} />
           <TabButton id="batch-audits" label="Batch Audits" icon={Shield} />
           <TabButton id="rules" label="Rules Engine" icon={Settings} />
           <TabButton id="graph" label="Link Graph" icon={Network} />
@@ -1095,39 +1099,11 @@ export default function GLIFPrototype() {
                 )}
               </CardContent>
             </Card>
-
-            {/* OLD: SOP-based Claim Generator */}
-            <Card className="border-2 border-orange-200 bg-orange-50">
-              <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900">📄 Claims Generator (SOP-based)</h2>
-                <p className="text-sm text-gray-600 mt-1">Generate test claims from SOP rules (Legacy Method)</p>
-              </CardHeader>
-              <CardContent>
-                <ClaimGenerator />
-              </CardContent>
-            </Card>
-
-            {/* NEW: Schema-based Claim Generator */}
-            <Card className="border-2 border-green-200 bg-green-50">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">🎯 Schema-Based Claims Generator</h2>
-                    <p className="text-sm text-gray-600 mt-1">Generate claims from JSON schema - Perfect for demos!</p>
-                  </div>
-                  <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full">NEW</span>
-                </div>
-                <div className="mt-3 p-3 bg-white border border-green-300 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    <strong>✨ Why use this?</strong> Same schema for generation AND validation = predictable test data!
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <SchemaBasedClaimGenerator />
-              </CardContent>
-            </Card>
           </div>
+        )}
+
+        {activeTab === 'testd' && (
+          <TestD />
         )}
 
         {activeTab === 'corpus' && (
@@ -1988,6 +1964,23 @@ export default function GLIFPrototype() {
               </CardHeader>
               <CardContent>
                 <SingleFileAudit />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+
+        {activeTab === 'single-audit-results' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">📊 Single File Audit Results</h2>
+                  <p className="text-sm text-gray-600 mt-1">View past validations and evidence graphs</p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <SingleFileAuditResults />
               </CardContent>
             </Card>
           </div>

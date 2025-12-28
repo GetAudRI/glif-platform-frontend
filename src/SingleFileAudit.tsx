@@ -8,7 +8,6 @@ import {
   getPolicyDeclaration,
   getPlaybook,
   getTeamCheckpostFile,
-  getGraphSubgraph,
   listSchemas
 } from './services/api';
 import NarrativeValidationResults from './components/NarrativeValidationResults';
@@ -34,6 +33,8 @@ export default function SingleFileAudit() {
   const [availablePolicySchemas, setAvailablePolicySchemas] = useState<string[]>([]);
   const [claimSchemaVersion, setClaimSchemaVersion] = useState<string>('claim_schema_v1.0.json');
   const [availableClaimSchemas, setAvailableClaimSchemas] = useState<string[]>([]);
+  const [sopSchemaVersion, setSopSchemaVersion] = useState<string>('');
+  const [availableSopSchemas, setAvailableSopSchemas] = useState<string[]>([]);
 
   // SOP Selection State (Third Party SOP - Optional)
   const [sopMode, setSopMode] = useState<'skip' | 'upload' | 'select'>('skip');
@@ -83,9 +84,6 @@ export default function SingleFileAudit() {
   const [policyDetails, setPolicyDetails] = useState<any>(null);
   const [playbookDetails, setPlaybookDetails] = useState<any>(null);
   const [teamCheckpostDetails, setTeamCheckpostDetails] = useState<any>(null);
-  const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[]; count?: any } | null>(null);
-  const [graphLoading, setGraphLoading] = useState(false);
-  const [graphError, setGraphError] = useState('');
   const [showAuditDetailsModal, setShowAuditDetailsModal] = useState(false);
   
   // Audit Trail View State
@@ -139,6 +137,19 @@ export default function SingleFileAudit() {
         }
       })
       .catch(error => console.error('Error loading claim schemas:', error));
+    
+    // Fetch SOP schemas - now returns actual filenames
+    listSchemas('sop')
+      .then(data => {
+        if (data.success && data.schema_files) {
+          setAvailableSopSchemas(data.schema_files);
+          // Set first schema as default if available
+          if (data.schema_files.length > 0) {
+            setSopSchemaVersion(data.schema_files[0]);
+          }
+        }
+      })
+      .catch(error => console.error('Error loading SOP schemas:', error));
   }, []);
 
   // Load existing policy declarations, playbooks, checkposts, and claims on mount
@@ -243,55 +254,6 @@ export default function SingleFileAudit() {
     return claim.name?.toLowerCase().includes(query);
   });
 
-  const fetchEvidenceGraph = async () => {
-    if (!results?.validation_id) return;
-    console.log('🕸️ Fetching evidence graph with params:', {
-      validation_id: results.validation_id,
-      playbook_id: selectedPlaybookId,
-      document_id: documentId,
-      policy_declaration_id: selectedPolicyDeclarationId,
-      team_checkpost_file_id: selectedTeamCheckpostFileId
-    });
-    setGraphLoading(true);
-    setGraphError('');
-    try {
-      const data = await getGraphSubgraph({
-        validation_id: results.validation_id,
-        playbook_id: selectedPlaybookId || undefined,
-        document_id: documentId || undefined,
-        policy_declaration_id: selectedPolicyDeclarationId || undefined,
-        team_checkpost_file_id: selectedTeamCheckpostFileId || undefined,
-        limit: 200
-      });
-      console.log('🕸️ Graph data received:', {
-        nodes: data.nodes?.length || 0,
-        edges: data.edges?.length || 0,
-        count: data.count,
-        success: data.success
-      });
-      setGraphData({ nodes: data.nodes || [], edges: data.edges || [], count: data.count });
-    } catch (err: any) {
-      console.error('🕸️ Graph fetch error:', err);
-      setGraphError(err.message || 'Failed to load evidence graph');
-    } finally {
-      setGraphLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (currentStep === 5 && results?.validation_id) {
-      console.log('🕸️ Auto-fetching evidence graph for validation:', results.validation_id);
-      fetchEvidenceGraph();
-    }
-  }, [
-    currentStep,
-    results?.validation_id,
-    selectedPlaybookId,
-    documentId,
-    selectedPolicyDeclarationId,
-    selectedTeamCheckpostFileId
-  ]);
-
   const getStepStatus = (stepNum: number): StepStatus => {
     if (stepNum < currentStep) return 'complete';
     if (stepNum === currentStep) return 'active';
@@ -305,6 +267,12 @@ export default function SingleFileAudit() {
 
     const formData = new FormData();
     formData.append('file', file);
+    
+    // Add schema_version if selected (optional for SOP)
+    if (sopSchemaVersion) {
+      formData.append('schema_version', sopSchemaVersion);
+      formData.append('use_schema', 'true');
+    }
 
     try {
       const response = await fetch('http://localhost:5002/api/audit-oversight/playbooks/upload', {
@@ -805,25 +773,50 @@ export default function SingleFileAudit() {
 
           {/* Upload New Mode */}
           {sopMode === 'upload' && (
-            <div
-              className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${sopLoading ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-                }`}
-              onClick={() => !sopLoading && document.getElementById('sopInput')?.click()}
-            >
-              <div className="text-6xl mb-4">📄</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {sopFile ? sopFile.name : 'Drop SOP document here'}
-              </h3>
-              <p className="text-gray-600 mb-2">or click to browse</p>
-              <p className="text-sm text-gray-500">Supports: PDF, TXT, JSON (max 16MB)</p>
-              <input
-                id="sopInput"
-                type="file"
-                accept=".pdf,.txt,.json"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleSopUpload(e.target.files[0])}
-              />
-            </div>
+            <>
+              {/* Schema Version Selector for SOP */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Extraction Schema File (Optional)
+                </label>
+                <select
+                  value={sopSchemaVersion}
+                  onChange={(e) => setSopSchemaVersion(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={sopLoading}
+                >
+                  <option value="">Use Default (Hardcoded Extraction)</option>
+                  {availableSopSchemas.map((schemaFile) => (
+                    <option key={schemaFile} value={schemaFile}>
+                      {schemaFile}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  📁 config/extraction_schemas/ | Optional: Use schema-based extraction for structured SOP rules
+                </p>
+              </div>
+
+              <div
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${sopLoading ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                  }`}
+                onClick={() => !sopLoading && document.getElementById('sopInput')?.click()}
+              >
+                <div className="text-6xl mb-4">📄</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {sopFile ? sopFile.name : 'Drop SOP document here'}
+                </h3>
+                <p className="text-gray-600 mb-2">or click to browse</p>
+                <p className="text-sm text-gray-500">Supports: PDF, TXT, JSON (max 16MB)</p>
+                <input
+                  id="sopInput"
+                  type="file"
+                  accept=".pdf,.txt,.json"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleSopUpload(e.target.files[0])}
+                />
+              </div>
+            </>
           )}
 
           {/* Loading State */}
@@ -1471,11 +1464,11 @@ export default function SingleFileAudit() {
         const passedCount = ruleChecks.filter((c: any) => c.status === 'PASS').length;
         const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length || results.errors?.length || 0;
         const warningCount = ruleChecks.filter((c: any) => c.status === 'WARNING').length || results.warnings?.length || 0;
-        const complianceScore = results.confidence_score !== undefined
-          ? results.confidence_score
+        const complianceScore = results.compliance_score !== undefined
+          ? results.compliance_score
           : baseRules
             ? Math.round((passedCount / baseRules) * 100)
-            : 85;
+            : 0;
 
         const formatCurrency = (val: number) => `$${(val || 0).toFixed(4)}`;
         const formatDate = (val: any) => val ? new Date(val).toLocaleString() : new Date().toLocaleString();
@@ -1839,6 +1832,48 @@ export default function SingleFileAudit() {
                 {/* Narrative View - Always visible */}
                 <NarrativeValidationResults results={results} />
 
+                {/* View Evidence Graph Button */}
+                {results.validation_id && (
+                  <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 rounded-lg border-2 border-indigo-200 shadow-sm p-6 mt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          🕸️ Evidence Graph Available
+                        </h3>
+                        <p className="text-sm text-gray-700 mb-1">
+                          See how this validation was performed with the <strong>Linear Journey View</strong>
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Understand which claim facts were checked against which rules, and how each decision was reached
+                        </p>
+                      </div>
+                      <div className="ml-6 flex flex-col items-center gap-3">
+                        <button
+                          onClick={() => {
+                            // Save validation ID to localStorage for the Audit Results tab
+                            localStorage.setItem('glif_selected_validation_id', String(results.validation_id));
+                            // Show friendly alert
+                            const msg = `✅ Ready!\n\nNow click the "Single File Audit Results" tab at the top.\n\nValidation ID ${results.validation_id} will be auto-selected.`;
+                            alert(msg);
+                          }}
+                          className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 font-semibold text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">🕸️</span>
+                            <div className="text-left">
+                              <div>View Evidence Graph</div>
+                              <div className="text-xs opacity-90">Click here, then go to Audit Results tab</div>
+                            </div>
+                          </div>
+                        </button>
+                        <div className="text-xs text-gray-600 text-center bg-white rounded-lg px-3 py-2 border border-gray-200">
+                          Validation ID: <span className="font-mono font-bold text-indigo-600">{results.validation_id}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Audit Trail Grid - Hidden */}
                 {false && (
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -2114,96 +2149,6 @@ export default function SingleFileAudit() {
                 )}
               </main>
             </div>
-
-        {/* Evidence Graph (POC) */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-semibold text-gray-800">🕸️ Evidence Graph (POC)</div>
-              <div className="text-xs text-gray-500">Nodes from validation, playbook, policy, claim fields, and checkposts</div>
-            </div>
-            <div className="flex items-center gap-2">
-              {graphError && (
-                <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded">
-                  {graphError}
-                </span>
-              )}
-              <button
-                onClick={fetchEvidenceGraph}
-                className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                disabled={graphLoading || !results?.validation_id}
-              >
-                {graphLoading ? 'Refreshing...' : 'Refresh evidence'}
-              </button>
-            </div>
-          </div>
-          <div className="p-4">
-            {!graphData && !graphLoading && (
-              <div className="text-sm text-gray-600">
-                Evidence graph will appear here after the first validation. Click "Refresh evidence" to load it.
-              </div>
-            )}
-            {graphLoading && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span>Loading graph data...</span>
-              </div>
-            )}
-            {graphData && !graphLoading && (graphData.nodes.length > 0 || graphData.edges.length > 0) && (
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-gray-800 mb-2">
-                    Nodes ({graphData.count?.nodes ?? graphData.nodes.length})
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-auto">
-                    {graphData.nodes.map((node) => (
-                      <div key={node.id} className="bg-white rounded border border-gray-200 p-2">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{node.type}</div>
-                        <div className="text-sm font-medium text-gray-900 truncate">{node.label}</div>
-                        {node.snippet && (
-                          <div className="text-xs text-gray-600 mt-1 line-clamp-2">{node.snippet}</div>
-                        )}
-                        <div className="text-[11px] text-gray-500 mt-1">
-                          Source: {node.source_type} {node.source_id}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-gray-800 mb-2">
-                    Edges ({graphData.count?.edges ?? graphData.edges.length})
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-auto">
-                    {graphData.edges.map((edge) => {
-                      const fromLabel = graphData.nodes.find((n) => n.id === edge.from)?.label || edge.from;
-                      const toLabel = graphData.nodes.find((n) => n.id === edge.to)?.label || edge.to;
-                      return (
-                        <div key={edge.id} className="bg-white rounded border border-gray-200 p-2">
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{edge.type}</div>
-                          <div className="text-sm text-gray-900">
-                            {fromLabel} → {toLabel}
-                          </div>
-                          {edge.confidence !== undefined && edge.confidence !== null && (
-                            <div className="text-[11px] text-gray-500">Confidence: {edge.confidence}</div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-            {graphData && !graphLoading && graphData.nodes.length === 0 && graphData.edges.length === 0 && (
-              <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <div className="font-medium mb-1">⚠️ Graph data is empty</div>
-                <div className="text-xs">
-                  The evidence graph exists but contains no nodes or edges. This might happen if the validation hasn't built the graph yet. Try clicking "Refresh evidence" or running a new validation.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Audit Details Modal */}
         {showAuditDetailsModal && (

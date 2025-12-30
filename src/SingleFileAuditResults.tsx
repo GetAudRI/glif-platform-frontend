@@ -13,6 +13,7 @@ interface Validation {
   policy_declaration_id: number | null;
   policy_declaration_name: string | null;
   team_checkpost_file_id: number | null;
+  team_checkpost_file_name: string | null;
   compliance_score: number;
   is_compliant: boolean;
   status: string;
@@ -154,7 +155,7 @@ export default function SingleFileAuditResults() {
             const timeAgo = getTimeAgo(date);
             return (
               <option key={v.id} value={v.id}>
-                {v.document_name} vs {v.playbook_name} • {timeAgo} • Score: {v.compliance_score}% • {v.pass_count} PASS, {v.warning_count} WARN, {v.fail_count} FAIL
+                {v.document_name} vs {v.playbook_name} • {timeAgo} • Score: {v.compliance_score}% • {v.pass_count || 0} PASS, {v.warning_count || 0} WARN, {v.fail_count || 0} FAIL
               </option>
             );
           })}
@@ -176,59 +177,20 @@ export default function SingleFileAuditResults() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
-              <div className="text-xs text-indigo-600 font-semibold mb-1">Compliance Score</div>
-              <div className="text-3xl font-bold text-indigo-900">{selectedValidation.compliance_score}%</div>
-              <div className="text-xs text-indigo-700 mt-1">
-                {selectedValidation.is_compliant ? '✓ Compliant' : '✗ Non-compliant'}
-              </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Claim Document:</span>
+              <span className="ml-2 font-medium text-gray-900">{selectedValidation.document_name}</span>
             </div>
-            
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-              <div className="text-xs text-green-600 font-semibold mb-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                Pass / Warning / Fail
-              </div>
-              <div className="text-xl font-bold text-green-900">
-                <span className="text-green-600">{selectedValidation.pass_count}</span>
-                <span className="text-gray-400 mx-1">/</span>
-                <span className="text-amber-600">{selectedValidation.warning_count}</span>
-                <span className="text-gray-400 mx-1">/</span>
-                <span className="text-red-600">{selectedValidation.fail_count}</span>
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                Total: {selectedValidation.pass_count + selectedValidation.warning_count + selectedValidation.fail_count} checks
-              </div>
+            <div>
+              <span className="text-gray-500">SOP/Playbook:</span>
+              <span className="ml-2 font-medium text-gray-900">{selectedValidation.playbook_name}</span>
             </div>
-            
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-              <div className="text-xs text-purple-600 font-semibold mb-1">Confidence</div>
-              <div className="text-3xl font-bold text-purple-900">{selectedValidation.confidence_score}%</div>
-              <div className="text-xs text-purple-700 mt-1">
-                {selectedValidation.confidence_score >= 80 ? 'High' : selectedValidation.confidence_score >= 60 ? 'Medium' : 'Low'}
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-              <div className="text-xs text-blue-600 font-semibold mb-1">AI Cost</div>
-              <div className="text-3xl font-bold text-blue-900">${selectedValidation.total_cost.toFixed(4)}</div>
-              <div className="text-xs text-blue-700 mt-1">
-                Validation #{selectedValidation.id}
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">Claim Document:</span>
-                <span className="ml-2 font-medium text-gray-900">{selectedValidation.document_name}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">SOP/Playbook:</span>
-                <span className="ml-2 font-medium text-gray-900">{selectedValidation.playbook_name}</span>
-              </div>
+            <div className="col-span-2">
+              <span className="text-gray-500">Team Checkposts:</span>
+              <span className="ml-2 font-medium text-gray-900">
+                {selectedValidation.team_checkpost_file_name || 'N/A'}
+              </span>
             </div>
           </div>
         </div>

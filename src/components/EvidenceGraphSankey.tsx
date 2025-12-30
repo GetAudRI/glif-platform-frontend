@@ -113,28 +113,28 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              🕸️ Evidence Flow: Linear Journey
+              ⚙️ Claim Validation Journey
             </h2>
             <p className="text-gray-600">
-              Follow the complete validation journey: What we found → What we checked → What we decided
+              Track how we analyze claims against policy rules and reach decisions
             </p>
           </div>
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-6 shadow-lg">
             <div className="grid grid-cols-3 gap-8 text-center">
               <div>
                 <div className="text-3xl font-bold">{claimCategories.size}</div>
-                <div className="text-sm opacity-90">Claim Facts</div>
-                <div className="text-xs opacity-75 mt-1">Start here</div>
+                <div className="text-sm opacity-90">Claim Groups</div>
+                <div className="text-xs opacity-75 mt-1">Data extracted</div>
               </div>
               <div>
                 <div className="text-3xl font-bold">{rules.size}</div>
-                <div className="text-sm opacity-90">Rules</div>
-                <div className="text-xs opacity-75 mt-1">Then apply</div>
+                <div className="text-sm opacity-90">Rules Applied</div>
+                <div className="text-xs opacity-75 mt-1">From SOP doc</div>
               </div>
               <div>
                 <div className="text-3xl font-bold">{ruleChecks.length}</div>
-                <div className="text-sm opacity-90">Decisions</div>
-                <div className="text-xs opacity-75 mt-1">Final result</div>
+                <div className="text-sm opacity-90">Decisions Made</div>
+                <div className="text-xs opacity-75 mt-1">Pass/Fail/N/A</div>
               </div>
             </div>
           </div>
@@ -188,41 +188,13 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
       </div>
 
       {/* Legend */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 text-sm">🎨 Understanding the Linear Journey</h3>
-        <div className="grid grid-cols-3 gap-6">
-          <div>
-            <div className="font-semibold text-purple-600 mb-2 text-sm flex items-center gap-2">
-              <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">1</span>
-              Step 1: Claim Data
-            </div>
-            <div className="text-xs text-gray-700 space-y-1">
-              <p>Facts extracted from the claim document</p>
-              <p className="text-gray-500">Each fact starts a validation journey</p>
-            </div>
-          </div>
-          <div>
-            <div className="font-semibold text-blue-600 mb-2 text-sm flex items-center gap-2">
-              <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">2</span>
-              Step 2: Rules Applied
-            </div>
-            <div className="text-xs text-gray-700 space-y-1">
-              <p>SOP rules and checkpost items checked</p>
-              <p className="text-gray-500">One claim fact can trigger multiple rules</p>
-            </div>
-          </div>
-          <div>
-            <div className="font-semibold text-green-600 mb-2 text-sm flex items-center gap-2">
-              <span className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">3</span>
-              Step 3: Final Decision
-            </div>
-            <div className="text-xs text-gray-700 space-y-1">
-              <p>✓ PASS - Requirements met</p>
-              <p>⚠ WARNING - Nudge/Suggestion</p>
-              <p>✗ FAIL - Requirements not met</p>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+        <p className="text-sm text-gray-700 mb-2">
+          <span className="font-semibold">💡 How to Read:</span> Claim data flows left to right through policy rules.
+        </p>
+        <p className="text-xs text-gray-600">
+          <span className="font-semibold">Color Key:</span> Purple=Categories | Blue=Rules | Green=Pass | Red=Fail
+        </p>
       </div>
     </div>
   );

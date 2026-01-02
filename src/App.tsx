@@ -4,7 +4,6 @@ import LandingPage from './components/LandingPage';
 import GLIFPrototype from './GLIFPrototype';
 import InvoiceApproval from './InvoiceApproval';
 import ContractReview from './ContractReview';
-import VendorAudit from './VendorAudit';
 import LoginModal from './components/LoginModal';
 import { isAuthenticated } from './utils/auth';
 import './index.css';
@@ -79,14 +78,6 @@ function App() {
           element={
             <ProtectedRoute>
               <ContractReview />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/vendor-audit" 
-          element={
-            <ProtectedRoute>
-              <VendorAudit />
             </ProtectedRoute>
           } 
         />

@@ -14,8 +14,9 @@ import SingleVendorAuditWorkflow from './components/vendor/SingleVendorAuditWork
 import GxPRulesLibrary from './components/vendor/GxPRulesLibrary';
 import PortfolioDashboard from './components/vendor/PortfolioDashboard';
 import CAPAManagement from './components/vendor/CAPAManagement';
+import AuditHistory from './components/vendor/AuditHistory';
 
-type TabType = 'management' | 'single-audit' | 'rules' | 'dashboard' | 'capa';
+type TabType = 'management' | 'single-audit' | 'rules' | 'dashboard' | 'capa' | 'audit-history';
 
 interface Tab {
   id: TabType;
@@ -44,6 +45,12 @@ const TABS: Tab[] = [
     description: 'Run compliance check for a vendor'
   },
   {
+    id: 'audit-history',
+    label: 'Audit History',
+    icon: '📜',
+    description: 'View all completed audits and findings'
+  },
+  {
     id: 'rules',
     label: 'GxP Rules Library',
     icon: '📋',
@@ -69,6 +76,8 @@ const VendorAudit: React.FC = () => {
         return <VendorManagementPage />;
       case 'single-audit':
         return <SingleVendorAuditWorkflow />;
+      case 'audit-history':
+        return <AuditHistory />;
       case 'rules':
         return <GxPRulesLibrary />;
       case 'capa':

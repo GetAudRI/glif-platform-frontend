@@ -131,7 +131,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
     if (!files) return;
 
     const newDocs: UploadedDocument[] = Array.from(files).map(file => ({
-      id: `${Date.now()}-${file.name}`,
+      id: file.name, // Use filename as ID so backend can find test documents
       name: file.name,
       size: file.size,
       type: file.type

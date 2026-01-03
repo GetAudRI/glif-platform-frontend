@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    FileSearch, FileText, DollarSign, ClipboardCheck,
+    FileSearch, FileText, DollarSign, ClipboardCheck, Factory,
     ArrowRight, Sparkles, CheckCircle2, Clock, LogOut, User
 } from 'lucide-react';
 import LoginModal from './LoginModal';
@@ -36,6 +36,21 @@ const useCases: UseCaseCard[] = [
         ],
         status: 'active',
         route: '/audit-oversight'
+    },
+    {
+        id: 'vendor-audit',
+        title: 'GLIF Vendor Audit',
+        description: 'GxP compliance auditing for Life Sciences vendors with automated document review',
+        icon: Factory,
+        gradient: 'from-teal-500 to-cyan-600',
+        features: [
+            'Vendor management',
+            'GxP rules library (49 rules)',
+            'Compliance auditing',
+            'CAPA management'
+        ],
+        status: 'active',
+        route: '/vendor-audit'
     },
     {
         id: 'contract-review',

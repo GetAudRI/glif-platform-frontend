@@ -74,9 +74,13 @@ export default function AuditResults() {
   const [distributionMethod, setDistributionMethod] = useState('email');
   const [followUpActions, setFollowUpActions] = useState<any[]>([]);
   const [newAction, setNewAction] = useState({ description: '', assigned_to: '', due_date: '' });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    loadAuditResults();
+    // Prevent duplicate calls when already loading
+    if (!loading && !isRefreshing) {
+      loadAuditResults();
+    }
   }, [statusFilter]);
 
   useEffect(() => {
@@ -144,30 +148,37 @@ export default function AuditResults() {
   const handleSaveComments = async () => {
     if (!selectedResult) return;
     try {
+      setIsRefreshing(true);
       await updateAuditComments(selectedResult.id, comments);
       alert('Comments saved successfully');
-      loadAuditResults();
-      loadAuditResultDetails(selectedResult.id);
+      // Only reload details for the selected item, not the entire list
+      await loadAuditResultDetails(selectedResult.id);
     } catch (err: any) {
       alert('Failed to save comments: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const handleAddManagementResponse = async () => {
     if (!selectedResult) return;
     try {
+      setIsRefreshing(true);
       await addManagementResponse(selectedResult.id, managementResponse, managerName);
       alert('Management response added');
-      loadAuditResults();
-      loadAuditResultDetails(selectedResult.id);
+      // Only reload details for the selected item, not the entire list
+      await loadAuditResultDetails(selectedResult.id);
     } catch (err: any) {
       alert('Failed to add management response: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const handleScheduleMeeting = async () => {
     if (!selectedResult) return;
     try {
+      setIsRefreshing(true);
       await scheduleClosingMeeting(
         selectedResult.id,
         meetingDate,
@@ -176,16 +187,19 @@ export default function AuditResults() {
         false
       );
       alert('Meeting scheduled');
-      loadAuditResults();
-      loadAuditResultDetails(selectedResult.id);
+      // Only reload details for the selected item, not the entire list
+      await loadAuditResultDetails(selectedResult.id);
     } catch (err: any) {
       alert('Failed to schedule meeting: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const handleCompleteMeeting = async () => {
     if (!selectedResult) return;
     try {
+      setIsRefreshing(true);
       await scheduleClosingMeeting(
         selectedResult.id,
         meetingDate,
@@ -194,22 +208,27 @@ export default function AuditResults() {
         true
       );
       alert('Meeting marked as completed');
-      loadAuditResults();
-      loadAuditResultDetails(selectedResult.id);
+      // Only reload details for the selected item, not the entire list
+      await loadAuditResultDetails(selectedResult.id);
     } catch (err: any) {
       alert('Failed to complete meeting: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const handleDistributeReport = async () => {
     if (!selectedResult) return;
     try {
+      setIsRefreshing(true);
       await distributeReport(selectedResult.id, reportRecipients, distributionMethod);
       alert('Report marked as distributed');
-      loadAuditResults();
-      loadAuditResultDetails(selectedResult.id);
+      // Only reload details for the selected item, not the entire list
+      await loadAuditResultDetails(selectedResult.id);
     } catch (err: any) {
       alert('Failed to distribute report: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 

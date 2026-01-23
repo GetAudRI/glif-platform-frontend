@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getRecentValidations } from './services/api';
-import { BarChart3, Calendar, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download } from 'lucide-react';
+import { BarChart3, Calendar, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download, FileText, ListTree, Trash2 } from 'lucide-react';
 import EvidenceGraphSankey from './components/EvidenceGraphSankey';
+import AuditResultsDetails from './components/AuditResultsDetails';
 
 interface Validation {
   id: number;
@@ -24,12 +25,15 @@ interface Validation {
   confidence_score: number;
 }
 
+type TabType = 'summary' | 'details';
+
 export default function SingleFileAuditResults() {
   const [validations, setValidations] = useState<Validation[]>([]);
   const [selectedValidationId, setSelectedValidationId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('summary');
 
   const loadValidations = async () => {
     try {
@@ -75,6 +79,38 @@ export default function SingleFileAuditResults() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadValidations();
+  };
+
+  const handleDeleteValidation = async (validationId: number) => {
+    if (!confirm('Are you sure you want to delete this validation result?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://127.0.0.1:5002/api/audit-oversight/validations/${validationId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Remove from local state
+        setValidations(prev => prev.filter(v => v.id !== validationId));
+        
+        // If deleted validation was selected, select the first remaining one
+        if (selectedValidationId === validationId) {
+          const remaining = validations.filter(v => v.id !== validationId);
+          setSelectedValidationId(remaining.length > 0 ? remaining[0].id : null);
+        }
+        
+        console.log('✅ Validation deleted successfully');
+      } else {
+        alert(`Failed to delete: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Error deleting validation: ${err.message}`);
+      console.error('Delete error:', err);
+    }
   };
 
   if (loading && !refreshing) {
@@ -145,21 +181,33 @@ export default function SingleFileAuditResults() {
           </button>
         </div>
         
-        <select
-          value={selectedValidationId || ''}
-          onChange={(e) => setSelectedValidationId(Number(e.target.value))}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          {validations.map(v => {
-            const date = new Date(v.validated_at);
-            const timeAgo = getTimeAgo(date);
-            return (
-              <option key={v.id} value={v.id}>
-                {v.document_name} vs {v.playbook_name} • {timeAgo} • Score: {v.compliance_score}% • {v.pass_count || 0} PASS, {v.warning_count || 0} WARN, {v.fail_count || 0} FAIL
-              </option>
-            );
-          })}
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={selectedValidationId || ''}
+            onChange={(e) => setSelectedValidationId(Number(e.target.value))}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            {validations.map(v => {
+              const date = new Date(v.validated_at);
+              const timeAgo = getTimeAgo(date);
+              return (
+                <option key={v.id} value={v.id}>
+                  {v.document_name} vs {v.playbook_name} • {timeAgo} • Score: {v.compliance_score}% • {v.pass_count || 0} PASS, {v.warning_count || 0} WARN, {v.fail_count || 0} FAIL
+                </option>
+              );
+            })}
+          </select>
+          
+          {selectedValidationId && (
+            <button
+              onClick={() => handleDeleteValidation(selectedValidationId)}
+              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors border border-red-200"
+              title="Delete this validation"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
+        </div>
         
         <div className="mt-2 text-xs text-gray-500">
           Showing {validations.length} recent validation{validations.length !== 1 ? 's' : ''}
@@ -196,13 +244,46 @@ export default function SingleFileAuditResults() {
         </div>
       )}
 
-      {/* Evidence Graph - Now a proper React component! */}
+      {/* Tab Navigation */}
+      {selectedValidationId && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('summary')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium text-sm transition-all inline-flex items-center justify-center gap-2 ${
+                activeTab === 'summary'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Summary View
+            </button>
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium text-sm transition-all inline-flex items-center justify-center gap-2 ${
+                activeTab === 'details'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <ListTree className="w-4 h-4" />
+              Audit Results Details
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Content Area - Conditional based on active tab */}
       {selectedValidationId ? (
-        <EvidenceGraphSankey validationId={selectedValidationId} />
+        <>
+          {activeTab === 'summary' && <EvidenceGraphSankey validationId={selectedValidationId} />}
+          {activeTab === 'details' && <AuditResultsDetails validationId={selectedValidationId} />}
+        </>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-12 text-center">
           <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600">Select a validation to view its evidence graph</p>
+          <p className="text-gray-600">Select a validation to view its results</p>
         </div>
       )}
     </div>

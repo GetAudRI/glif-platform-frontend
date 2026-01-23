@@ -11,7 +11,7 @@ interface RuleCheck {
   rule: string;
   rule_number: number;
   severity: string;
-  status: 'PASS' | 'WARNING' | 'FAIL';
+  status: 'PASS' | 'WARNING' | 'FAIL' | 'N/A';
 }
 
 interface Validation {
@@ -99,12 +99,23 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
 
   const ruleChecks = validation.results.rule_checks;
   
-  // Calculate statistics
+  // Calculate statistics (case-insensitive to handle backend variations)
   const claimCategories = new Set(ruleChecks.map(c => c.category));
   const rules = new Set(ruleChecks.map(c => `Rule ${c.rule_number}`));
-  const passCount = ruleChecks.filter(c => c.status === 'PASS').length;
-  const warnCount = ruleChecks.filter(c => c.status === 'WARNING').length;
-  const failCount = ruleChecks.filter(c => c.status === 'FAIL').length;
+  const passCount = ruleChecks.filter(c => c.status?.toUpperCase() === 'PASS').length;
+  const warnCount = ruleChecks.filter(c => c.status?.toUpperCase() === 'WARNING' || c.status?.toUpperCase() === 'WARN').length;
+  const failCount = ruleChecks.filter(c => c.status?.toUpperCase() === 'FAIL').length;
+  const naCount = ruleChecks.filter(c => c.status?.toUpperCase() === 'N/A').length;
+  
+  // Debug logging
+  console.log('📊 Validation Stats:', {
+    total: ruleChecks.length,
+    passed: passCount,
+    warnings: warnCount,
+    failed: failCount,
+    na: naCount,
+    statuses: ruleChecks.map(c => ({ rule: c.rule_number, status: c.status }))
+  });
 
   return (
     <div className="space-y-6">
@@ -167,7 +178,7 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
 
         {/* Summary Stats */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-4 gap-4 text-center">
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
               <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-green-900">{passCount}</div>
@@ -183,6 +194,11 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
               <div className="text-2xl font-bold text-red-900">{failCount}</div>
               <div className="text-sm text-red-700">Failed</div>
             </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <AlertCircle className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-gray-700">{naCount}</div>
+              <div className="text-sm text-gray-600">N/A</div>
+            </div>
           </div>
         </div>
       </div>
@@ -193,7 +209,7 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
           <span className="font-semibold">💡 How to Read:</span> Claim data flows left to right through policy rules.
         </p>
         <p className="text-xs text-gray-600">
-          <span className="font-semibold">Color Key:</span> Purple=Categories | Blue=Rules | Green=Pass | Red=Fail
+          <span className="font-semibold">Color Key:</span> Purple=Categories | Blue=Rules | Green=Pass | Amber=Warning | Gray=N/A | Red=Fail
         </p>
       </div>
     </div>
@@ -214,12 +230,15 @@ function SankeyVisualization({ ruleChecks }: { ruleChecks: RuleCheck[] }) {
     // Column 2: Rule
     const ruleName = `Rule ${check.rule_number}: ${check.rule}`.substring(0, 45);
     
-    // Column 3: Result
+    // Column 3: Result (case-insensitive)
     let resultNode = '';
-    if (check.status === 'PASS') {
+    const status = check.status?.toUpperCase();
+    if (status === 'PASS') {
       resultNode = '✓ PASS';
-    } else if (check.status === 'WARNING') {
+    } else if (status === 'WARNING' || status === 'WARN') {
       resultNode = '⚠ WARNING';
+    } else if (status === 'N/A') {
+      resultNode = '⊘ N/A';
     } else {
       resultNode = '✗ FAIL';
     }
@@ -253,6 +272,7 @@ function SankeyVisualization({ ruleChecks }: { ruleChecks: RuleCheck[] }) {
           '#3b82f6',  // Rules - blue
           '#22c55e',  // PASS - green
           '#f59e0b',  // WARNING - amber
+          '#9ca3af',  // N/A - gray
           '#ef4444',  // FAIL - red
         ],
         label: {
@@ -265,7 +285,7 @@ function SankeyVisualization({ ruleChecks }: { ruleChecks: RuleCheck[] }) {
       },
       link: {
         colorMode: 'gradient',
-        colors: ['#c4b5fd', '#93c5fd', '#86efac', '#fcd34d', '#fca5a5']
+        colors: ['#c4b5fd', '#93c5fd', '#86efac', '#fcd34d', '#d1d5db', '#fca5a5']
       }
     },
     tooltip: {

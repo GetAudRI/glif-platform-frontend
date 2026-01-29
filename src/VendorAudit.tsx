@@ -186,50 +186,42 @@ const VendorAudit: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Back/Home Button */}
-            <button
-              onClick={() => activeView === 'home' ? navigate('/') : setActiveView('home')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">
-                {activeView === 'home' ? 'Back to Home' : 'Back to Modules'}
-              </span>
-            </button>
-
-            {/* Title */}
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">🏭</div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {activeView === 'home' 
-                    ? 'GLIF Vendor Audit'
-                    : MODULE_CARDS.find(m => m.id === activeView)?.label || 'GLIF Vendor Audit'
-                  }
-                </h1>
-                <p className="text-sm text-gray-500">
-                  GxP Compliance for Life Sciences
-                </p>
-              </div>
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      {/* Page Header */}
+      <div className="bg-white border-b border-neutral-200 px-8 py-6 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Back Button for sub-views */}
+            {activeView !== 'home' && (
+              <button
+                onClick={() => setActiveView('home')}
+                className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl font-semibold text-neutral-900">
+                {activeView === 'home' 
+                  ? 'Vendor Audit'
+                  : MODULE_CARDS.find(m => m.id === activeView)?.label || 'Vendor Audit'
+                }
+              </h1>
+              <p className="text-sm text-neutral-600 mt-1">
+                GxP Compliance for Life Sciences
+              </p>
             </div>
-
-            {/* Badge */}
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-xs font-medium">
-                MVP v1.0
-              </span>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="status-badge status-pass">
+              MVP v1.0
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="min-h-[calc(100vh-4rem)]">
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
         {renderContent()}
       </div>
     </div>

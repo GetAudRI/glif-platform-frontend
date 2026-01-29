@@ -165,58 +165,60 @@ export default function LandingPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             {/* Header */}
             <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 py-6">
+                <div className="max-w-7xl mx-auto px-6 py-2">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
-                                <Sparkles className="w-8 h-8 text-blue-600" />
+                        {/* Left spacer for balance */}
+                        <div className="flex-1"></div>
+                        
+                        {/* Center - Logo and Title */}
+                        <div className="flex items-center gap-4">
+                            <img 
+                                src="/glif-logo.png" 
+                                alt="GLIF Platform" 
+                                className="h-20 w-fit"
+                            />
+                            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
                                 GLIF Platform
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${branchBadgeClass}`}>
-                                    {`Branch: ${branchLabel}`}
-                                </span>
                             </h1>
-                            <p className="text-sm text-gray-600 mt-2">
-                                AI-Powered Insurance Intelligence Suite
-                            </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {authenticated ? (
-                                <>
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
-                                        <User className="w-4 h-4" />
-                                        <span className="text-sm font-medium">{username}</span>
-                                    </div>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                        Documentation
-                                    </button>
-                                    <button
-                                        onClick={() => setShowLoginModal(true)}
-                                        className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                                    >
-                                        Login
-                                    </button>
-                                </>
-                            )}
+                        
+                        {/* Right - Auth buttons and branch badge */}
+                        <div className="flex-1 flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-3">
+                                {authenticated ? (
+                                    <>
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                                            <User className="w-4 h-4" />
+                                            <span className="text-sm font-medium">{username}</span>
+                                        </div>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Logout
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                            Documentation
+                                        </button>
+                                        <button
+                                            onClick={() => setShowLoginModal(true)}
+                                            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                                        >
+                                            Login
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${branchBadgeClass}`}>
+                                {`Branch: ${branchLabel}`}
+                            </span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Empty Test Button (feature/graph-rag only) */}
-            <div className="max-w-7xl mx-auto px-6 py-2">
-                <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
-                    Empty Button (graph-rag branch test)
-                </button>
             </div>
 
             {/* Hero Section */}

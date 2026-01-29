@@ -454,7 +454,20 @@ export default function InvoiceApproval() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      {/* Page Header */}
+      <div className="bg-white border-b border-neutral-200 px-8 py-6 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900">Invoice Approval</h1>
+            <p className="text-sm text-neutral-600 mt-1">Validate invoices against approval policies</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="max-w-5xl mx-auto">
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between relative">
@@ -1261,6 +1274,8 @@ export default function InvoiceApproval() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

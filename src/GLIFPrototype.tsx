@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   FileText, Database, Settings, BarChart3, FileSearch, Network, 
   CheckCircle2, AlertTriangle, XCircle, Download, Plus, Search,
@@ -134,7 +135,17 @@ const MOCK_CLAIMS = [
 ];
 
 export default function GLIFPrototype() {
-  const [activeTab, setActiveTab] = useState('connect');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') || 'single-audit'; // Default to single-audit instead of connect
+  const [activeTab, setActiveTab] = useState(tabParam);
+
+  // Update active tab when URL parameter changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const [connected, setConnected] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState('C1234');
   const [graphView, setGraphView] = useState<'basic' | 'enhanced'>('enhanced');
@@ -935,20 +946,20 @@ export default function GLIFPrototype() {
     { name: 'Non-Compliant', value: 18, color: '#ef4444' },
   ];
 
-  // Tab Navigation Component
-  const TabButton = ({ id, label, icon: Icon }: { id: string; label: string; icon: any }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
-        activeTab === id
-          ? 'bg-blue-600 text-white shadow-md'
-          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-      }`}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
-  );
+  // Tab Navigation Component - Now handled by sidebar
+  // const TabButton = ({ id, label, icon: Icon }: { id: string; label: string; icon: any }) => (
+  //   <button
+  //     onClick={() => setActiveTab(id)}
+  //     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+  //       activeTab === id
+  //         ? 'bg-blue-600 text-white shadow-md'
+  //         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+  //     }`}
+  //   >
+  //     <Icon className="w-4 h-4" />
+  //     {label}
+  //   </button>
+  // );
 
   // Card Component
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -990,50 +1001,58 @@ export default function GLIFPrototype() {
     </div>
   );
 
+  // Get dynamic page title based on active tab
+  const getPageTitle = () => {
+    const titles: Record<string, { title: string; subtitle: string }> = {
+      'single-audit': { title: 'Single File Audit', subtitle: 'Audit individual documents against policy rules' },
+      'single-audit-results': { title: 'Audit Results', subtitle: 'View and analyze audit outcomes' },
+      'batch-audits': { title: 'Batch Audits', subtitle: 'Process multiple audits at scale' },
+      'connect': { title: 'Connectors', subtitle: 'Connect GLIF to your data sources' },
+      'corpus': { title: 'Corpus Management', subtitle: 'Manage policies, rules, and documents' },
+      'rules': { title: 'Rules Engine', subtitle: 'Configure and manage audit rules' },
+      'graph': { title: 'Link Graph', subtitle: 'Visualize document relationships' },
+      'claims': { title: 'Claim Drilldown', subtitle: 'Detailed claim analysis and investigation' },
+      'testd': { title: 'TestD', subtitle: 'Test and validate audit configurations' },
+      'cost-analytics': { title: 'Cost Analytics', subtitle: 'Monitor and optimize processing costs' },
+      'portfolio': { title: 'Portfolio Dashboard', subtitle: 'Overview of all audit activities' },
+      'audit-process': { title: 'Audit Process', subtitle: 'Manage audit workflow and pipeline' },
+      'audit-concepts': { title: 'Audit Concepts', subtitle: 'View audit results and insights' }
+    };
+    return titles[activeTab] || { title: 'Audit Oversight', subtitle: 'Intelligent Insurance Audit Platform v2.1' };
+  };
+
+  const pageInfo = getPageTitle();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                GLIF Audit Oversight
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">Intelligent Insurance Audit Platform v2.1</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                Settings
-              </button>
-              <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                Help
-              </button>
-              <button className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                Logout
-              </button>
-            </div>
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      {/* Page Header */}
+      <div className="bg-white border-b border-neutral-200 px-8 py-6 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900">
+              {pageInfo.title}
+            </h1>
+            <p className="text-sm text-neutral-600 mt-1">{pageInfo.subtitle}</p>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-8 flex flex-wrap gap-3">
-          <TabButton id="connect" label="Connectors" icon={Database} />
-          <TabButton id="testd" label="TestD" icon={Activity} />
-          <TabButton id="corpus" label="Corpus" icon={FileText} />
-          <TabButton id="single-audit" label="Single File Audit" icon={Zap} />
-          <TabButton id="single-audit-results" label="Single File Audit Results" icon={BarChart3} />
-          <TabButton id="batch-audits" label="Batch Audits" icon={Shield} />
-          <TabButton id="rules" label="Rules Engine" icon={Settings} />
-          <TabButton id="graph" label="Link Graph" icon={Network} />
-          <TabButton id="claims" label="Claim Drilldown" icon={FileSearch} />
-          <TabButton id="cost-analytics" label="Cost Analytics" icon={DollarSign} />
-          <TabButton id="portfolio" label="Portfolio" icon={BarChart3} />
-          <TabButton id="audit-process" label="Audit Process" icon={ClipboardCheck} />
-          <TabButton id="audit-concepts" label="Audit Results" icon={FileText} />
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        {/* Active Tab Indicator - Shows current selection */}
+        <div className="mb-6 card bg-blue-50/30 border-2 border-blue-100">
+          <div className="px-6 py-4 flex items-center gap-4">
+            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-2 h-2 rounded-full bg-primary-600 animate-pulse"></div>
+            </div>
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Currently Working On</div>
+              <div className="text-base font-semibold text-neutral-900">{pageInfo.title}</div>
+            </div>
+            <div className="text-xs text-neutral-500 bg-white px-3 py-1.5 rounded-full border border-neutral-200">
+              Active
+            </div>
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -2736,6 +2755,58 @@ export default function GLIFPrototype() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Default fallback view - shows greyed card for active selection */}
+        {!['connect', 'testd', 'corpus', 'single-audit', 'single-audit-results', 'batch-audits', 'rules', 'graph', 'claims', 'cost-analytics', 'portfolio', 'audit-process', 'audit-concepts'].includes(activeTab) && (
+          <div className="max-w-4xl mx-auto">
+            <div className="card overflow-hidden">
+              {/* Greyed header showing active selection */}
+              <div className="bg-neutral-100 border-b border-neutral-200 px-6 py-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-neutral-200 rounded-lg flex items-center justify-center">
+                    <Settings className="w-6 h-6 text-neutral-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-neutral-700">
+                      {pageInfo.title}
+                    </h2>
+                    <p className="text-sm text-neutral-500 mt-1">
+                      {pageInfo.subtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Content area */}
+              <div className="p-8 text-center">
+                <div className="max-w-md mx-auto">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                    <Activity className="w-8 h-8 text-neutral-400 animate-pulse" />
+                  </div>
+                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                    Working on {pageInfo.title}
+                  </h3>
+                  <p className="text-sm text-neutral-600 mb-6">
+                    This feature is currently being developed. Check back soon for updates.
+                  </p>
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-left">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-primary-600"></div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-neutral-900 mb-1">In Development</p>
+                        <p className="text-xs text-neutral-600">
+                          Features and functionality will be added to this section in an upcoming release.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

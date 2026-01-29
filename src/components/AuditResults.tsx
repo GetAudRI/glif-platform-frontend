@@ -77,10 +77,8 @@ export default function AuditResults() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    // Prevent duplicate calls when already loading
-    if (!loading && !isRefreshing) {
-      loadAuditResults();
-    }
+    // Load audit results on mount and when status filter changes
+    loadAuditResults();
   }, [statusFilter]);
 
   useEffect(() => {

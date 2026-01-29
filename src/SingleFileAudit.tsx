@@ -592,6 +592,12 @@ export default function SingleFileAudit() {
 
       // Store audit ID and show results
       console.log('🕸️ Setting results with validation_id:', data.validation_id);
+      
+      // Calculate is_valid based on actual results if not provided by backend
+      const ruleChecks = data.rule_checks || [];
+      const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length || data.errors?.length || 0;
+      const calculatedIsValid = failedCount === 0;
+      
       setResults({
         audit_id: data.audit_id,
         validation_id: data.validation_id,
@@ -603,8 +609,8 @@ export default function SingleFileAudit() {
         total_rules: data.total_rules,
         checkposts_count: data.checkposts_count,
         message: data.message,
-        // Include validation results if available
-        is_valid: data.is_valid !== undefined ? data.is_valid : false,
+        // Include validation results - use backend value if available, otherwise calculate from rule checks
+        is_valid: data.is_valid !== undefined ? data.is_valid : calculatedIsValid,
         claim_id: data.claim_id,
         rule_checks: data.rule_checks || [],
         errors: data.errors || [],
@@ -1462,8 +1468,8 @@ export default function SingleFileAudit() {
         
         const baseRules = ruleChecks.length;
         const passedCount = ruleChecks.filter((c: any) => c.status === 'PASS').length;
-        const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length || results.errors?.length || 0;
-        const warningCount = ruleChecks.filter((c: any) => c.status === 'WARNING').length || results.warnings?.length || 0;
+        const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length;
+        const warningCount = ruleChecks.filter((c: any) => c.status === 'WARNING').length;
         const complianceScore = results.compliance_score !== undefined
           ? results.compliance_score
           : baseRules

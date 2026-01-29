@@ -6,6 +6,7 @@ import InvoiceApproval from './InvoiceApproval';
 import ContractReview from './ContractReview';
 import VendorAudit from './VendorAudit';
 import LoginModal from './components/LoginModal';
+import Layout from './components/Layout';
 import { isAuthenticated } from './utils/auth';
 import './index.css';
 
@@ -62,7 +63,9 @@ function App() {
           path="/audit-oversight" 
           element={
             <ProtectedRoute>
-              <GLIFPrototype />
+              <Layout>
+                <GLIFPrototype />
+              </Layout>
             </ProtectedRoute>
           } 
         />
@@ -70,7 +73,9 @@ function App() {
           path="/invoice-approval" 
           element={
             <ProtectedRoute>
-              <InvoiceApproval />
+              <Layout>
+                <InvoiceApproval />
+              </Layout>
             </ProtectedRoute>
           } 
         />
@@ -78,7 +83,9 @@ function App() {
           path="/contract-review" 
           element={
             <ProtectedRoute>
-              <ContractReview />
+              <Layout>
+                <ContractReview />
+              </Layout>
             </ProtectedRoute>
           } 
         />
@@ -86,7 +93,9 @@ function App() {
           path="/vendor-audit" 
           element={
             <ProtectedRoute>
-              <VendorAudit />
+              <Layout>
+                <VendorAudit />
+              </Layout>
             </ProtectedRoute>
           } 
         />

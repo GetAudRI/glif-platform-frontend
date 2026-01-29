@@ -378,13 +378,14 @@ export async function getExtractedRules(auditId: string) {
 /**
  * DAY 4: Start batch validation
  */
-export async function startValidation(auditId: string) {
+export async function startValidation(auditId: string, demoMode: boolean = true) {
   try {
     const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ demo_mode: demoMode }),
     });
 
     const data = await safeJson(response);

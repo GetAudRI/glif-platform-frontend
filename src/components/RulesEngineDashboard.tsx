@@ -65,13 +65,22 @@ export default function RulesEngineDashboard() {
     try {
       setLoading(true);
       setError(null);
+      console.log('Loading Rules Engine Dashboard...');
       const data = await getRulesEngineDashboard();
+      console.log('Dashboard data received:', data);
       setPolicyDeclarations(data.policy_declarations || []);
       setSops(data.sops || []);
       setTeamCheckposts(data.team_checkposts || []);
+      console.log('Dashboard loaded successfully:', {
+        policyDeclarations: data.policy_declarations?.length || 0,
+        sops: data.sops?.length || 0,
+        teamCheckposts: data.team_checkposts?.length || 0
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard';
+      setError(errorMessage);
       console.error('Error loading dashboard:', err);
+      console.error('Error details:', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -290,6 +299,9 @@ export default function RulesEngineDashboard() {
     );
   }
 
+  // Check if all data is empty
+  const isEmpty = policyDeclarations.length === 0 && sops.length === 0 && teamCheckposts.length === 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -297,8 +309,13 @@ export default function RulesEngineDashboard() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Rules Engine Dashboard</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Manage your Policy Declarations, Standard Operating Procedures (SOPs), and Team Checkposts
+            Manage your Standard Operating Procedures (SOPs), Team Checkposts, and Policy Declarations
           </p>
+          {!loading && isEmpty && (
+            <div className="mt-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2 inline-block">
+              ℹ️ No data found. Upload documents in the Corpus tab to get started.
+            </div>
+          )}
         </div>
         <button
           onClick={loadDashboard}
@@ -311,17 +328,6 @@ export default function RulesEngineDashboard() {
       {/* Tabs */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="flex border-b border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setActiveTab('policy_declarations')}
-            className={`px-6 py-3 font-semibold text-sm transition-colors ${
-              activeTab === 'policy_declarations'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Shield className="w-4 h-4 inline-block mr-2" />
-            Policy Declarations ({policyDeclarations.length})
-          </button>
           <button
             onClick={() => setActiveTab('sops')}
             className={`px-6 py-3 font-semibold text-sm transition-colors ${
@@ -343,6 +349,17 @@ export default function RulesEngineDashboard() {
           >
             <FileText className="w-4 h-4 inline-block mr-2" />
             Team Checkposts ({teamCheckposts.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('policy_declarations')}
+            className={`px-6 py-3 font-semibold text-sm transition-colors ${
+              activeTab === 'policy_declarations'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Shield className="w-4 h-4 inline-block mr-2" />
+            Policy Declarations ({policyDeclarations.length})
           </button>
         </div>
 

@@ -268,13 +268,20 @@ export default function ContractReview() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Contract Review</h1>
-          <p className="text-gray-600">Validate contracts against playbook standards</p>
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      {/* Page Header */}
+      <div className="bg-white border-b border-neutral-200 px-8 py-6 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900">Contract Review</h1>
+            <p className="text-sm text-neutral-600 mt-1">Validate contracts against playbook standards</p>
+          </div>
         </div>
+      </div>
+
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="max-w-6xl mx-auto">
 
         {/* Progress Steps */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -924,6 +931,7 @@ export default function ContractReview() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

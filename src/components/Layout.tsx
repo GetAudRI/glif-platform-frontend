@@ -75,7 +75,7 @@ export default function Layout({ children }: LayoutProps) {
             onClick={() => navigate('/')}
             className="text-left w-full hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-xl font-semibold text-neutral-900">GLIF Platform</h1>
+            <h1 className="text-xl font-semibold text-neutral-900">AudRI Platform</h1>
             <p className="text-xs text-neutral-500 mt-1">Enterprise Oversight</p>
           </button>
         </div>

@@ -637,7 +637,7 @@ export default function ContractReview() {
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
               <h2 className="text-3xl font-bold text-white mb-2">📄 Contract Validation Report</h2>
-              <p className="text-indigo-100 text-sm">Side-by-Side Comparison: Playbook Rules vs Contract Clauses vs GLIF Validation</p>
+              <p className="text-indigo-100 text-sm">Side-by-Side Comparison: Playbook Rules vs Contract Clauses vs AudRI Validation</p>
             </div>
 
             {/* Summary Stats */}
@@ -684,7 +684,7 @@ export default function ContractReview() {
                 <div className="text-sm font-bold text-yellow-900 uppercase tracking-wide">📋 Contract Clause</div>
                   </div>
               <div className="px-6 py-4 bg-green-50 border-r border-gray-200">
-                <div className="text-sm font-bold text-green-900 uppercase tracking-wide">🤖 GLIF Validation</div>
+                <div className="text-sm font-bold text-green-900 uppercase tracking-wide">🤖 AudRI Validation</div>
                 </div>
               <div className="px-6 py-4 bg-purple-50">
                 <div className="text-sm font-bold text-purple-900 uppercase tracking-wide">⚡ Action Items</div>
@@ -735,7 +735,7 @@ export default function ContractReview() {
                             </div>
                           </div>
 
-                          {/* Column 3: GLIF Validation */}
+                          {/* Column 3: AudRI Validation */}
                           <div className="px-6 py-6 border-r border-gray-200">
                             <span className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide mb-4 ${
                               check.status === 'pass' ? 'bg-green-100 text-green-700' :
@@ -749,7 +749,7 @@ export default function ContractReview() {
                     </span>
                             
                             <div className="mb-4">
-                              <div className="text-xs uppercase text-gray-600 font-semibold mb-2">GLIF Analysis</div>
+                              <div className="text-xs uppercase text-gray-600 font-semibold mb-2">AudRI Analysis</div>
                               <div className="text-sm text-gray-800 leading-relaxed">
                                 {check.status === 'pass' 
                                   ? `Contract complies with the ${check.rule.toLowerCase()} requirement as specified in the playbook. ${check.details || 'All necessary conditions are met and no executive approval or exceptions are needed.'}`

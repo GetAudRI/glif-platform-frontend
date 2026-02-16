@@ -1,8 +1,8 @@
-# GLIFAudit UI Improvements - Before & After
+# AudRIAudit UI Improvements - Before & After
 
 ## 🎯 Overview
 
-This document outlines the improvements made to your GLIFAudit prototype to make it investor-ready.
+This document outlines the improvements made to your AudRIAudit prototype to make it investor-ready.
 
 ## 📊 Before & After Comparison
 

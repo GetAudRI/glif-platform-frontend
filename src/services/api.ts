@@ -1,5 +1,5 @@
-// API Service for GLIF Audit Oversight
-// Updated to point to glif-platform-backend
+// API Service for AudRI Audit Oversight
+// Updated to point to audri-platform-backend
 const API_BASE = 'http://localhost:5002';
 
 async function safeJson(response: Response) {

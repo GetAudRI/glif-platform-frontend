@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TrendingUp, Zap, CheckCircle2, Clock, DollarSign, ShieldAlert, Car, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Zap, CheckCircle2, Clock, DollarSign, ShieldAlert, Car, AlertTriangle, Scale } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ProcessingVelocityDashboardProps {
@@ -129,13 +129,20 @@ export default function ProcessingVelocityDashboard({ className = '' }: Processi
           <div className="w-2 h-8 bg-blue-500 rounded"></div>
           This Quarter - Q3 2025
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
               <DollarSign className="w-6 h-6 text-blue-600" />
               <div className="text-sm font-medium text-gray-700">Overpayment</div>
             </div>
             <div className="text-3xl font-bold text-blue-600">$23,000</div>
+          </div>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <Scale className="w-6 h-6 text-red-600" />
+              <div className="text-sm font-medium text-gray-700">UnderPayments</div>
+            </div>
+            <div className="text-3xl font-bold text-red-600">$8,500</div>
           </div>
           <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
@@ -222,13 +229,13 @@ export default function ProcessingVelocityDashboard({ className = '' }: Processi
             </div>
           </div>
 
-          {/* GLIF Approach */}
+          {/* AudRI Approach */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm">
                 New
               </div>
-              <h4 className="font-semibold text-gray-700">GLIF AuditOversight</h4>
+              <h4 className="font-semibold text-gray-700">AudRI AuditOversight</h4>
             </div>
             <div className="space-y-2 ml-10">
               <div className="flex items-start gap-2">

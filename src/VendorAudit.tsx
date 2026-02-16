@@ -1,5 +1,5 @@
 /**
- * GLIF Vendor Audit
+ * AudRI Vendor Audit
  * Main component for vendor compliance auditing
  * Supports GxP compliance checking for Life Sciences vendors
  */
@@ -90,7 +90,7 @@ const VendorAudit: React.FC = () => {
           <div className="text-center mb-12">
             <div className="text-6xl mb-4">🏭</div>
             <h1 className="text-4xl font-bold text-gray-900 mb-3">
-              GLIF Vendor Audit
+              AudRI Vendor Audit
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               GxP Compliance for Life Sciences - Automate vendor audits with AI-powered document review

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   FileText, Database, Settings, BarChart3, FileSearch, Network, 
   CheckCircle2, AlertTriangle, XCircle, Download, Plus, Search,
-  ChevronRight, Clock, TrendingUp, Shield, Users, Activity, Zap, DollarSign, ClipboardCheck
+  ChevronRight, Clock, TrendingUp, Shield, Users, Activity, Zap, DollarSign, ClipboardCheck, Link2
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
@@ -42,6 +42,8 @@ type GNode = {
   status?: 'normal'|'missing' 
 };
 type GLink = { id: string; source: string; target: string; kind: 'doc'|'meta' };
+
+const SOURCE_SYSTEM = 'Guidewire ClaimCenter'; // Configurable for demos: 'CoreLogic', etc.
 
 // Mock Data - Link Graphs
 const PREBUILT_GRAPHS: Record<string, { nodes: GNode[]; links: GLink[] }> = {
@@ -1033,6 +1035,10 @@ export default function AudRIPrototype() {
               {pageInfo.title}
             </h1>
             <p className="text-sm text-neutral-600 mt-1">{pageInfo.subtitle}</p>
+          </div>
+          <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-lg bg-blue-100 border-2 border-blue-200 text-sm font-medium text-blue-800">
+            <Link2 className="w-5 h-5" />
+            <span>Connected to: {SOURCE_SYSTEM}</span>
           </div>
         </div>
       </div>

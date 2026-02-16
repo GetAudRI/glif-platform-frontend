@@ -1,8 +1,8 @@
-# GLIF Audit Oversight - Investor Demo v2.1 (Clean Version)
+# AudRI Audit Oversight - Investor Demo v2.1 (Clean Version)
 
 ## 🎨 What's Been Improved
 
-This is a **professionally cleaned-up version** of your GLIFAudit prototype, optimized for investor presentations.
+This is a **professionally cleaned-up version** of your AudRIAudit prototype, optimized for investor presentations.
 
 ### ✨ Key Improvements
 
@@ -110,7 +110,7 @@ npm run preview
 
 ### Key Talking Points:
 
-- **Automation**: "Traditional audits take weeks; GLIF reduces this to hours"
+- **Automation**: "Traditional audits take weeks; AudRI reduces this to hours"
 - **Intelligence**: "AI automatically classifies documents and extracts metadata"
 - **Proactive**: "Rules engine flags issues before they become problems"
 - **Comprehensive**: "Complete visibility from portfolio level down to individual documents"
@@ -136,7 +136,7 @@ The prototype uses realistic mock data for:
 ## 📝 Customization
 
 ### To modify colors:
-Edit the color schemes in `src/GLIFPrototype.tsx` (search for `bg-blue-`, `text-red-`, etc.)
+Edit the color schemes in `src/AudRIPrototype.tsx` (search for `bg-blue-`, `text-red-`, etc.)
 
 ### To add/remove features:
 Modify the tab content sections in the main component

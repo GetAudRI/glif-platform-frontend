@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import LandingPage from './components/LandingPage';
-import GLIFPrototype from './GLIFPrototype';
+import AudRIPrototype from './AudRIPrototype';
 import InvoiceApproval from './InvoiceApproval';
 import ContractReview from './ContractReview';
 import VendorAudit from './VendorAudit';
@@ -64,7 +64,7 @@ function App() {
           element={
             <ProtectedRoute>
               <Layout>
-                <GLIFPrototype />
+                <AudRIPrototype />
               </Layout>
             </ProtectedRoute>
           } 

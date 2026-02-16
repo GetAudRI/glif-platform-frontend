@@ -1857,7 +1857,7 @@ export default function SingleFileAudit() {
                         <button
                           onClick={() => {
                             // Save validation ID to localStorage for the Audit Results tab
-                            localStorage.setItem('glif_selected_validation_id', String(results.validation_id));
+                            localStorage.setItem('audri_selected_validation_id', String(results.validation_id));
                             // Show friendly alert
                             const msg = `✅ Ready!\n\nNow click the "Single File Audit Results" tab at the top.\n\nValidation ID ${results.validation_id} will be auto-selected.`;
                             alert(msg);

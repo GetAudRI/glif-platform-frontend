@@ -66,8 +66,8 @@ Successfully implemented the TestD tab with all demo data generation tools, incl
 1. **Frontend**:
    - `/src/TestD.tsx` - Main TestD tab component
    - `/src/components/SchemaPairGenerator.tsx` - Schema pair generator UI
-   - `/src/components/SchemaBasedClaimsGenerator.tsx` - Extracted from GLIFPrototype
-   - `/src/components/SOPBasedClaimsGenerator.tsx` - Extracted from GLIFPrototype
+   - `/src/components/SchemaBasedClaimsGenerator.tsx` - Extracted from AudRIPrototype
+   - `/src/components/SOPBasedClaimsGenerator.tsx` - Extracted from AudRIPrototype
    - `/src/components/FieldMappingVisualization.tsx` - Field mapping display
 
 2. **Backend**:
@@ -76,7 +76,7 @@ Successfully implemented the TestD tab with all demo data generation tools, incl
 
 ### Modified Files
 1. **Frontend**:
-   - `/src/GLIFPrototype.tsx`:
+   - `/src/AudRIPrototype.tsx`:
      - Added TestD tab to navigation
      - Added TestD component import
      - Updated Connectors tab with redirect

@@ -36,7 +36,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, useCaseName }: Lo
 
       if (data.success) {
         // Store auth in localStorage
-        localStorage.setItem('glif_auth', JSON.stringify({
+        localStorage.setItem('audri_auth', JSON.stringify({
           username: data.user.username,
           role: data.user.role,
           authenticated: true

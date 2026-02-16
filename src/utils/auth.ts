@@ -6,7 +6,7 @@ export interface AuthUser {
   authenticated: boolean;
 }
 
-const AUTH_KEY = 'glif_auth';
+const AUTH_KEY = 'audri_auth';
 
 export function getAuth(): AuthUser | null {
   try {

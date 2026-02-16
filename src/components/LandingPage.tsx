@@ -24,7 +24,7 @@ interface UseCaseCard {
 const useCases: UseCaseCard[] = [
     {
         id: 'audit-oversight',
-        title: 'GLIF Audit Oversight - Auto Claims',
+        title: 'AudRI Claims',
         description: 'Comprehensive batch claim auditing with AI-powered portfolio analysis',
         icon: FileSearch,
         gradient: 'from-blue-600 to-blue-800',
@@ -39,7 +39,7 @@ const useCases: UseCaseCard[] = [
     },
     {
         id: 'vendor-audit',
-        title: 'GLIF Vendor Audit',
+        title: 'AudRI Compliance',
         description: 'GxP compliance auditing for Life Sciences vendors with automated document review',
         icon: Factory,
         gradient: 'from-teal-500 to-cyan-600',
@@ -54,7 +54,7 @@ const useCases: UseCaseCard[] = [
     },
     {
         id: 'contract-review',
-        title: 'GLIF Contract Review',
+        title: 'AudRI Contracts',
         description: 'Intelligent contract validation against playbook standards',
         icon: FileText,
         gradient: 'from-emerald-500 to-green-600',
@@ -69,7 +69,7 @@ const useCases: UseCaseCard[] = [
     },
     {
         id: 'invoice-approval',
-        title: 'GLIF Invoice Approval',
+        title: 'AudRI Spend',
         description: 'Automated invoice validation against contract rules and compliance checking',
         icon: DollarSign,
         gradient: 'from-purple-500 to-indigo-600',
@@ -84,7 +84,7 @@ const useCases: UseCaseCard[] = [
     },
     {
         id: 'loan-covenant',
-        title: 'GLIF Loan Covenant',
+        title: 'AudRI Loan Covenant',
         description: 'Loan agreement validation and covenant compliance checking',
         icon: DollarSign,
         gradient: 'from-purple-500 to-indigo-600',
@@ -98,7 +98,7 @@ const useCases: UseCaseCard[] = [
     },
     {
         id: 'underwriting',
-        title: 'GLIF Underwriting',
+        title: 'AudRI Underwriting',
         description: 'Underwriting decision audit and policy compliance verification',
         icon: ClipboardCheck,
         gradient: 'from-orange-500 to-red-600',
@@ -173,13 +173,16 @@ export default function LandingPage() {
                         {/* Center - Logo and Title */}
                         <div className="flex items-center gap-4">
                             <img 
-                                src="/glif-logo.png" 
-                                alt="GLIF Platform" 
+                                src="/audri-logo.png" 
+                                alt="AudRI Platform" 
                                 className="h-20 w-fit"
                             />
-                            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                                GLIF Platform
-                            </h1>
+                            <div>
+                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                                    AudRI
+                                </h1>
+                                <p className="text-[22px] text-black font-semibold mt-1">The Audit Platform</p>
+                            </div>
                         </div>
                         
                         {/* Right - Auth buttons and branch badge */}
@@ -225,10 +228,10 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="text-center mb-12">
                     <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                        Choose Your Use Case
+                        Choose Your Audit Use Case
                     </h2>
                     <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                        Select from our suite of AI-powered tools designed to streamline insurance operations,
+                        Select from our suite of solutions designed to streamline operations,
                         ensure compliance, and accelerate decision-making.
                     </p>
                 </div>

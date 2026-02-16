@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getRecentValidations } from './services/api';
-import { BarChart3, Calendar, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download, FileText, ListTree, Trash2 } from 'lucide-react';
+import { BarChart3, Calendar, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Download, FileText, ListTree, Trash2, Activity } from 'lucide-react';
 import EvidenceGraphSankey from './components/EvidenceGraphSankey';
 import AuditResultsDetails from './components/AuditResultsDetails';
+import AIAuditTrail from './components/AIAuditTrail';
 
 interface Validation {
   id: number;
@@ -25,7 +26,7 @@ interface Validation {
   confidence_score: number;
 }
 
-type TabType = 'summary' | 'details';
+type TabType = 'summary' | 'details' | 'ai-trail';
 
 export default function SingleFileAuditResults() {
   const [validations, setValidations] = useState<Validation[]>([]);
@@ -45,7 +46,7 @@ export default function SingleFileAuditResults() {
         setValidations(data.validations);
         
         // Check if there's a validation ID from SingleFileAudit (via localStorage)
-        const savedValidationId = localStorage.getItem('glif_selected_validation_id');
+        const savedValidationId = localStorage.getItem('audri_selected_validation_id');
         if (savedValidationId) {
           const validationId = parseInt(savedValidationId, 10);
           // Check if this validation exists in the list
@@ -55,7 +56,7 @@ export default function SingleFileAuditResults() {
             console.log('✅ Auto-selected validation ID from SingleFileAudit:', validationId);
           }
           // Clear it so it doesn't persist
-          localStorage.removeItem('glif_selected_validation_id');
+          localStorage.removeItem('audri_selected_validation_id');
         } else if (data.validations.length > 0 && !selectedValidationId) {
           // Auto-select most recent validation if no saved ID
           setSelectedValidationId(data.validations[0].id);
@@ -270,6 +271,17 @@ export default function SingleFileAuditResults() {
               <ListTree className="w-4 h-4" />
               Audit Results Details
             </button>
+            <button
+              onClick={() => setActiveTab('ai-trail')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium text-sm transition-all inline-flex items-center justify-center gap-2 ${
+                activeTab === 'ai-trail'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              AI Audit Trail
+            </button>
           </div>
         </div>
       )}
@@ -279,6 +291,7 @@ export default function SingleFileAuditResults() {
         <>
           {activeTab === 'summary' && <EvidenceGraphSankey validationId={selectedValidationId} />}
           {activeTab === 'details' && <AuditResultsDetails validationId={selectedValidationId} />}
+          {activeTab === 'ai-trail' && <AIAuditTrail validationId={selectedValidationId} />}
         </>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-12 text-center">

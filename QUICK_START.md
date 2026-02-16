@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide - GLIFAudit Clean v2.1
+# 🚀 Quick Start Guide - AudRIAudit Clean v2.1
 
 Frontend (React + Vite):
 URL: http://localhost:5173
@@ -75,7 +75,7 @@ Before your investor meeting:
 ## 🎬 Demo Script (5-minute version)
 
 ### 1. Opening (30 seconds)
-"GLIF is an intelligent audit platform that transforms insurance underwriting audits from weeks to hours."
+"AudRI is an intelligent audit platform that transforms insurance underwriting audits from weeks to hours."
 
 ### 2. Connectors Tab (30 seconds)
 "We connect seamlessly to any data source - AWS, Google Cloud, SharePoint. [Click Connect AWS S3]"
@@ -105,7 +105,7 @@ Before your investor meeting:
 
 "[Click Start Audit] Traditional audits follow 5 steps that take weeks."
 
-"GLIF automates data gathering, applies rule-based evaluation, and generates findings in real-time."
+"AudRI automates data gathering, applies rule-based evaluation, and generates findings in real-time."
 
 "[Show compliance dashboard] We're seeing 82% compliance, with clear areas for improvement."
 
@@ -140,7 +140,7 @@ A: "This is a functional prototype with realistic mock data. In production, it c
 A: "Typical deployment is 6-8 weeks including data integration and rule configuration."
 
 **Q: What about existing audit processes?**
-A: "GLIF augments your existing workflow. Auditors focus on exceptions and judgment calls while GLIF handles routine checks."
+A: "AudRI augments your existing workflow. Auditors focus on exceptions and judgment calls while AudRI handles routine checks."
 
 **Q: Can we customize the rules?**
 A: "Absolutely. The rules engine is fully configurable to match your specific underwriting guidelines."

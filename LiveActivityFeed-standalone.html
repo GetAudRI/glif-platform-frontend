@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Activity Feed - Standalone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-slideIn {
+      animation: slideIn 0.5s ease-out;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-6">
+  <!-- 
+    LIVE ACTIVITY FEED - Standalone Plugin
+    Copy the #live-activity-feed section below into your website.
+    Include the <style> block and the script at the bottom.
+  -->
+
+  <div id="live-activity-feed" class="max-w-2xl">
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl border border-slate-700 shadow-2xl overflow-hidden">
+      <!-- Header -->
+      <div class="p-6 border-b border-slate-700">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50"></div>
+            <h3 class="text-xl font-bold text-white">Live Activity Feed</h3>
+          </div>
+          <div class="flex items-center gap-2 text-sm text-slate-300">
+            <span id="feed-time" class="font-mono font-semibold"></span>
+          </div>
+        </div>
+        <p class="text-sm text-slate-400 mt-2">
+          Real-time updates streaming • New items animate in from the top
+        </p>
+      </div>
+
+      <!-- Scrolling Activity List -->
+      <div id="activity-list" class="p-4 space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar">
+        <!-- Activity items are injected here by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Live Activity Feed - Configuration
+     * Customize these for your use case
+     */
+    const CONFIG = {
+      // Add new item every N milliseconds (2000 = 2 seconds)
+      intervalMs: 2000,
+      // Max items to show (older items are removed)
+      maxItems: 10,
+      // Your custom activity types - each has: id, label, status (PASSED|WARNING|FAILED), details
+      // Leave empty to use built-in demo data generator
+      customItems: []
+    };
+
+    const STATUS_STYLES = {
+      PASSED: {
+        bg: 'bg-green-900/20 border-green-700/50 hover:bg-green-900/30',
+        icon: '<span class="text-green-400">✓</span>',
+        badge: 'bg-green-500/20 text-green-400 border-green-500/50'
+      },
+      WARNING: {
+        bg: 'bg-yellow-900/20 border-yellow-700/50 hover:bg-yellow-900/30',
+        icon: '<span class="text-yellow-400">⚠</span>',
+        badge: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+      },
+      FAILED: {
+        bg: 'bg-red-900/20 border-red-700/50 hover:bg-red-900/30',
+        icon: '<span class="text-red-400">✗</span>',
+        badge: 'bg-red-500/20 text-red-400 border-red-500/50'
+      }
+    };
+
+    // Demo data generator (used when customItems is empty)
+    const DEMO_PREFIXES = [
+      { prefix: 'CLM', type: 'Commercial Auto' },
+      { prefix: 'WC', type: "Workers' Compensation" },
+      { prefix: 'GL', type: 'General Liability' },
+      { prefix: 'CP', type: 'Commercial Property' }
+    ];
+    const DEMO_ISSUES = ['Missing Approval', 'Incomplete Documentation', 'Payment Limit Exceeded'];
+
+    function generateDemoActivity() {
+      const statuses = ['PASSED', 'PASSED', 'PASSED', 'WARNING', 'FAILED'];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const { prefix, type } = DEMO_PREFIXES[Math.floor(Math.random() * DEMO_PREFIXES.length)];
+      const claimNum = Math.floor(Math.random() * 9000) + 1000;
+      let details = '';
+      if (status === 'FAILED') details = DEMO_ISSUES[Math.floor(Math.random() * DEMO_ISSUES.length)];
+      else if (status === 'WARNING') details = 'Minor discrepancy detected';
+
+      return {
+        id: `activity-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        label: `${prefix}-2025-${claimNum}`,
+        type,
+        status,
+        details,
+        duration: (Math.random() * 2 + 1).toFixed(1)
+      };
+    }
+
+    function createActivityElement(activity, isNew = false) {
+      const style = STATUS_STYLES[activity.status];
+      const div = document.createElement('div');
+      div.className = `flex items-center gap-4 p-4 rounded-lg border transition-all duration-500 ${style.bg} ${isNew ? 'animate-slideIn' : ''}`;
+      div.dataset.id = activity.id;
+
+      div.innerHTML = `
+        <div class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-lg font-bold">
+          ${style.icon}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono font-bold text-white text-sm">${activity.label}</span>
+            <span class="text-slate-400 text-xs">•</span>
+            <span class="text-slate-300 text-xs font-medium">${activity.type || ''}</span>
+          </div>
+          ${activity.details ? `<p class="text-xs text-slate-400 truncate">${activity.details}</p>` : ''}
+        </div>
+        <div class="flex-shrink-0 flex items-center gap-3">
+          <span class="px-3 py-1 rounded-full text-xs font-bold ${style.badge} border">${activity.status}</span>
+          ${activity.duration ? `<span class="text-slate-400 text-xs font-mono">${activity.duration}m</span>` : ''}
+        </div>
+      `;
+
+      return div;
+    }
+
+    let activities = [];
+    const listEl = document.getElementById('activity-list');
+    const timeEl = document.getElementById('feed-time');
+
+    function updateTime() {
+      if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+    }
+
+    function addActivity(activity, animate = true) {
+      const el = createActivityElement(activity, animate);
+      listEl.insertBefore(el, listEl.firstChild);
+      activities.unshift(activity);
+
+      // Trim to max
+      while (activities.length > CONFIG.maxItems) {
+        const old = activities.pop();
+        const oldEl = listEl.querySelector(`[data-id="${old.id}"]`);
+        if (oldEl) oldEl.remove();
+      }
+    }
+
+    function init() {
+      // Initial items (no animation)
+      for (let i = 0; i < 5; i++) {
+        addActivity(generateDemoActivity(), false);
+      }
+
+      // Update time every second
+      updateTime();
+      setInterval(updateTime, 1000);
+
+      // Add new activity on interval (with slide-in animation)
+      setInterval(() => {
+        const activity = CONFIG.customItems.length
+          ? CONFIG.customItems.shift()
+          : generateDemoActivity();
+        if (activity) addActivity(activity, true);
+      }, CONFIG.intervalMs);
+    }
+
+    init();
+
+    // Expose for external control (e.g. from your backend)
+    window.LiveActivityFeed = {
+      add: addActivity,
+      addCustom: (item) => addActivity({ ...item, id: item.id || `activity-${Date.now()}` })
+    };
+  </script>
+</body>
+</html>

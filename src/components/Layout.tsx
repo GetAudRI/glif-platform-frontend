@@ -3,7 +3,7 @@ import {
   FileSearch, BarChart3, DollarSign, BookOpen, Database,
   Settings, LogOut, FileText, Shield,
   ClipboardCheck, TrendingUp, GitBranch, CheckCircle2,
-  FileCheck, Receipt, FileSignature, Building2
+  FileCheck, Receipt, FileSignature, Building2, ShieldCheck
 } from 'lucide-react';
 import { isAuthenticated, getUsername, clearAuth } from '../utils/auth';
 
@@ -16,7 +16,7 @@ interface NavItem {
   label: string;
   icon: any;
   route: string;
-  section: 'modules' | 'audit-tools' | 'analytics' | 'configuration';
+  section: 'modules' | 'audit-tools' | 'trend-analytics' | 'testing-cost' | 'configuration';
 }
 
 const navItems: NavItem[] = [
@@ -34,10 +34,13 @@ const navItems: NavItem[] = [
   { id: 'audit-oversight?tab=claims', label: 'Claim Drilldown', icon: FileSearch, route: '/audit-oversight?tab=claims', section: 'audit-tools' },
   { id: 'audit-oversight?tab=audit-process', label: 'Audit Process', icon: Shield, route: '/audit-oversight?tab=audit-process', section: 'audit-tools' },
   
-  // Analytics & Testing
-  { id: 'audit-oversight?tab=testd', label: 'TestD', icon: CheckCircle2, route: '/audit-oversight?tab=testd', section: 'analytics' },
-  { id: 'audit-oversight?tab=cost-analytics', label: 'Cost Analytics', icon: TrendingUp, route: '/audit-oversight?tab=cost-analytics', section: 'analytics' },
-  { id: 'audit-oversight?tab=portfolio', label: 'Portfolio', icon: DollarSign, route: '/audit-oversight?tab=portfolio', section: 'analytics' },
+  // Trend Analytics Engine
+  { id: 'audit-oversight?tab=portfolio', label: 'Portfolio', icon: DollarSign, route: '/audit-oversight?tab=portfolio', section: 'trend-analytics' },
+  { id: 'audit-oversight?tab=market-conduct', label: 'Market Conduct', icon: ShieldCheck, route: '/audit-oversight?tab=market-conduct', section: 'trend-analytics' },
+  
+  // Testing and Cost
+  { id: 'audit-oversight?tab=testd', label: 'TestD', icon: CheckCircle2, route: '/audit-oversight?tab=testd', section: 'testing-cost' },
+  { id: 'audit-oversight?tab=cost-analytics', label: 'Cost Analytics', icon: TrendingUp, route: '/audit-oversight?tab=cost-analytics', section: 'testing-cost' },
   
   // Configuration
   { id: 'audit-oversight?tab=connect', label: 'Connectors', icon: Database, route: '/audit-oversight?tab=connect', section: 'configuration' },
@@ -61,7 +64,8 @@ export default function Layout({ children }: LayoutProps) {
   const groupedItems = {
     modules: navItems.filter(item => item.section === 'modules'),
     auditTools: navItems.filter(item => item.section === 'audit-tools'),
-    analytics: navItems.filter(item => item.section === 'analytics'),
+    trendAnalytics: navItems.filter(item => item.section === 'trend-analytics'),
+    testingCost: navItems.filter(item => item.section === 'testing-cost'),
     configuration: navItems.filter(item => item.section === 'configuration'),
   };
 
@@ -126,13 +130,36 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          {/* Analytics & Testing Section */}
-          {groupedItems.analytics.length > 0 && (
+          {/* Trend Analytics Engine Section */}
+          {groupedItems.trendAnalytics.length > 0 && (
             <div className="mb-6">
               <div className="px-3 mb-2">
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Analytics & Testing</span>
+                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Trend Analytics Engine</span>
               </div>
-              {groupedItems.analytics.map(item => (
+              {groupedItems.trendAnalytics.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.route)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
+                    location.pathname + location.search === item.route
+                      ? 'text-white bg-primary-600'
+                      : 'text-slate-700 hover:bg-white hover:shadow-sm'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Testing and Cost Section */}
+          {groupedItems.testingCost.length > 0 && (
+            <div className="mb-6">
+              <div className="px-3 mb-2">
+                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Testing and Cost</span>
+              </div>
+              {groupedItems.testingCost.map(item => (
                 <button
                   key={item.id}
                   onClick={() => navigate(item.route)}

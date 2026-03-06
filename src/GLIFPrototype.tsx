@@ -29,6 +29,7 @@ import TestD from './TestD';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
 import LiveAuditMonitor from './LiveAuditMonitor';
 import CostAnalytics from './components/CostAnalytics';
+import MarketConductTab from './components/MarketConductTab';
 import RulesEngineDashboard from './components/RulesEngineDashboard';
 import AuditResults from './components/AuditResults';
 import ViewExtractions from './components/ViewExtractions';
@@ -1015,6 +1016,7 @@ export default function AudRIPrototype() {
       'testd': { title: 'TestD', subtitle: 'Test and validate audit configurations' },
       'cost-analytics': { title: 'Cost Analytics', subtitle: 'Monitor and optimize processing costs' },
       'portfolio': { title: 'Portfolio Dashboard', subtitle: 'Overview of all audit activities' },
+      'market-conduct': { title: 'Market Conduct Readiness', subtitle: 'Continuous exam preparedness · Aligned to NAIC Unfair Claims Settlement Practices Act' },
       'audit-process': { title: 'Audit Process', subtitle: 'Manage audit workflow and pipeline' },
       'audit-concepts': { title: 'Audit Concepts', subtitle: 'View audit results and insights' }
     };
@@ -2012,6 +2014,12 @@ export default function AudRIPrototype() {
           </div>
         )}
 
+        {activeTab === 'market-conduct' && (
+          <div className="p-6">
+            <MarketConductTab />
+          </div>
+        )}
+
         {activeTab === 'batch-audits' && (
           <div className="space-y-6">
             <Card>
@@ -2759,7 +2767,7 @@ export default function AudRIPrototype() {
         )}
 
         {/* Default fallback view - shows greyed card for active selection */}
-        {!['connect', 'testd', 'corpus', 'single-audit', 'single-audit-results', 'batch-audits', 'rules', 'graph', 'claims', 'cost-analytics', 'portfolio', 'audit-process', 'audit-concepts'].includes(activeTab) && (
+        {!['connect', 'testd', 'corpus', 'single-audit', 'single-audit-results', 'batch-audits', 'rules', 'graph', 'claims', 'cost-analytics', 'portfolio', 'market-conduct', 'audit-process', 'audit-concepts'].includes(activeTab) && (
           <div className="max-w-4xl mx-auto">
             <div className="card overflow-hidden">
               {/* Greyed header showing active selection */}

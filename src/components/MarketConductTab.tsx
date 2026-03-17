@@ -3,12 +3,16 @@ import {
   Shield,
   MapPin,
   TrendingUp,
+  TrendingDown,
+  Minus,
   FolderOpen,
   ClipboardList,
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
   FileOutput,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface Finding {
@@ -66,6 +70,20 @@ interface CarrierNAICStatus {
   practices: Record<number, 'pass' | 'warn' | 'fail'>;
 }
 
+interface NAICPracticeAtRiskDetail {
+  files: string[];
+  states: string[];
+  adjusters: string[];
+  gap: string;
+}
+
+interface NAICPracticeMeta {
+  filesChecked: number;
+  lastFlag: string;
+  trend: 'up' | 'stable' | 'down';
+  atRiskDetail?: NAICPracticeAtRiskDetail;
+}
+
 const naicPractices: NAICPractice[] = [
   { id: 1, name: 'Misrepresenting policy provisions', shortName: 'Policy misrepresentation' },
   { id: 2, name: 'Failing to acknowledge claims promptly', shortName: 'Claim acknowledgment' },
@@ -88,6 +106,90 @@ const carrierNAICStatus: CarrierNAICStatus[] = [
   { carrierName: 'Acuity Insurance', practices: { 1: 'pass', 2: 'pass', 3: 'pass', 4: 'pass', 5: 'pass', 6: 'pass', 7: 'pass', 8: 'pass', 9: 'pass', 10: 'pass', 11: 'pass', 12: 'pass', 13: 'pass' } },
   { carrierName: 'Penn National', practices: { 1: 'pass', 2: 'pass', 3: 'warn', 4: 'pass', 5: 'pass', 6: 'pass', 7: 'pass', 8: 'pass', 9: 'pass', 10: 'fail', 11: 'pass', 12: 'pass', 13: 'pass' } },
 ];
+
+// Per-carrier, per-practice metadata: files checked, last flag, trend, expandable at-risk detail
+const carrierNAICDetails: Record<string, Record<number, NAICPracticeMeta>> = {
+  'Hastings Mutual': {
+    1: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    2: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    3: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    4: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    5: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    6: {
+      filesChecked: 1284,
+      lastFlag: 'Last flagged: Feb 24 — 4 files',
+      trend: 'down',
+      atRiskDetail: {
+        files: ['WC-2025-1112', 'CLM-2025-4825', 'GL-2025-3301', 'WC-2025-0892'],
+        states: ['FL', 'CA'],
+        adjusters: ['J. Martinez (FL)', 'S. Chen (CA)'],
+        gap: 'Missing documented investigation steps within 15 days',
+      },
+    },
+    7: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    8: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    9: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    10: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    11: { filesChecked: 412, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    12: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    13: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+  },
+  'SECURA Insurance': {
+    1: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    2: { filesChecked: 1284, lastFlag: '3 days ago', trend: 'down', atRiskDetail: { files: ['CLM-2025-4120'], states: ['FL'], adjusters: ['T. Williams'], gap: 'Claim acknowledgment > 15 days' } },
+    3: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    4: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    5: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    6: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    7: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    8: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    9: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    10: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    11: { filesChecked: 412, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    12: { filesChecked: 1284, lastFlag: 'Last flagged: Feb 21 — 2 files', trend: 'stable', atRiskDetail: { files: ['WC-2025-2201', 'CLM-2025-3890'], states: ['TX', 'CA'], adjusters: ['A. Patel', 'M. Johnson'], gap: 'Duplicate claim submission detected' } },
+    13: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+  },
+  'Acuity Insurance': {
+    1: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    2: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    3: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    4: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    5: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    6: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    7: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    8: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    9: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    10: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    11: { filesChecked: 412, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    12: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    13: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+  },
+  'Penn National': {
+    1: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    2: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'up' },
+    3: { filesChecked: 1284, lastFlag: 'Last flagged: Feb 20 — 3 files', trend: 'down', atRiskDetail: { files: ['GL-2025-4455', 'CLM-2025-5120', 'WC-2025-0788'], states: ['FL', 'NY'], adjusters: ['R. Davis', 'K. Lee'], gap: 'Coverage affirmation beyond 30-day window' } },
+    4: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    5: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    6: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    7: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    8: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    9: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    10: {
+      filesChecked: 1284,
+      lastFlag: 'Last flagged: Feb 23 — 6 files',
+      trend: 'down',
+      atRiskDetail: {
+        files: ['CLM-2025-6012', 'GL-2025-3340', 'WC-2025-1123', 'CLM-2025-5890', 'GL-2025-2201', 'CLM-2025-4455'],
+        states: ['FL', 'CA', 'TX'],
+        adjusters: ['J. Martinez', 'S. Chen', 'T. Williams'],
+        gap: 'Settlement statement not provided within 10 days of agreement',
+      },
+    },
+    11: { filesChecked: 412, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    12: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+    13: { filesChecked: 1284, lastFlag: 'No flags in 90 days', trend: 'stable' },
+  },
+};
 
 const findings: Finding[] = [
   { id: 1, name: 'Documentation Completeness', desc: 'File tells complete story', rate: 94.2, trend: 2.1, files: 1284, flags: 74, severity: 'high' },
@@ -242,14 +344,14 @@ function TrendLine({ data, width = 200, height = 40 }: { data: TimelinePoint[]; 
 
 function OverallReadinessCard({ score, sublabel }: { score: number; sublabel: string }) {
   return (
-    <div className="flex-1 min-w-[180px] p-5 rounded-xl bg-gradient-to-br from-green-50 to-white border border-green-200 relative overflow-hidden flex flex-col items-center">
+    <div className="flex-1 min-w-[180px] p-6 rounded-xl bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 shadow-md hover:shadow-lg transition-shadow relative overflow-hidden flex flex-col items-center">
       <span className="absolute top-2.5 right-3 text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700 uppercase tracking-wide">
         LIVE
       </span>
       <div className="text-sm font-medium text-neutral-600 mb-2 flex items-center gap-1.5">
-        <Shield className="w-4 h-4 text-green-600" /> Overall Readiness
+        <Shield className="w-6 h-6 text-green-600" /> Overall Readiness
       </div>
-      <ScoreGauge score={score} size={80} hideOf100 />
+      <ScoreGauge score={score} size={96} hideOf100 />
       {sublabel && <div className="text-sm text-neutral-500 mt-1.5 text-center">{sublabel}</div>}
     </div>
   );
@@ -271,10 +373,16 @@ function KPICard({
   badge?: string;
 }) {
   const colorMap = {
-    green: 'from-green-50 to-white border-green-200',
-    blue: 'from-blue-50 to-white border-blue-200',
-    primary: 'from-primary-50 to-white border-blue-200',
-    orange: 'from-orange-50 to-white border-orange-200',
+    green: 'from-green-50 to-green-100 border-green-200',
+    blue: 'from-blue-50 to-blue-100 border-blue-200',
+    primary: 'from-primary-50 to-primary-100 border-blue-200',
+    orange: 'from-orange-50 to-orange-100 border-orange-200',
+  };
+  const valueColorMap = {
+    green: 'text-green-600',
+    blue: 'text-blue-600',
+    primary: 'text-primary-600',
+    orange: 'text-orange-600',
   };
   const badgeColorMap = {
     green: 'bg-green-100 text-green-700',
@@ -284,7 +392,7 @@ function KPICard({
   };
   return (
     <div
-      className={`flex-1 min-w-[180px] p-5 rounded-xl bg-gradient-to-br ${colorMap[color]} border relative overflow-hidden`}
+      className={`flex-1 min-w-[180px] p-6 rounded-xl bg-gradient-to-br ${colorMap[color]} border-2 shadow-md hover:shadow-lg transition-shadow relative overflow-hidden`}
     >
       {badge && (
         <span className={`absolute top-2.5 right-3 text-[10px] font-bold px-2 py-0.5 rounded ${badgeColorMap[color]} uppercase tracking-wide`}>
@@ -292,9 +400,9 @@ function KPICard({
         </span>
       )}
       <div className="text-sm font-medium text-neutral-600 mb-2 flex items-center gap-1.5">
-        <span className="text-base">{icon}</span> {label}
+        <span className="text-lg">{icon}</span> {label}
       </div>
-      <div className="text-3xl font-bold text-neutral-900 tracking-tight">{value}</div>
+      <div className={`text-3xl font-bold tracking-tight ${valueColorMap[color]}`}>{value}</div>
       {sublabel && <div className="text-sm text-neutral-500 mt-1.5">{sublabel}</div>}
     </div>
   );
@@ -308,10 +416,10 @@ function ExamExposureCalc({ findingRate, filesExamined = 200 }: { findingRate: n
   const remediationHigh = 2000000;
 
   return (
-    <div className="p-5 rounded-xl bg-white border border-neutral-200">
+    <div className="mt-6 p-6 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 shadow-md">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-orange-500" />
+          <AlertTriangle className="w-6 h-6 text-orange-500" />
           <span className="text-neutral-900 font-semibold">Exam Exposure Estimate</span>
         </div>
         <span className="text-[10px] px-2.5 py-1 rounded bg-orange-100 text-orange-600 font-semibold">
@@ -322,7 +430,7 @@ function ExamExposureCalc({ findingRate, filesExamined = 200 }: { findingRate: n
         <div>
           <div className="text-neutral-500 text-xs mb-1">Est. Finding Rate</div>
           <div
-            className={`text-xl font-bold ${
+            className={`text-2xl font-bold ${
               findingRate > 15 ? 'text-red-600' : findingRate > 10 ? 'text-amber-600' : 'text-green-600'
             }`}
           >
@@ -332,14 +440,14 @@ function ExamExposureCalc({ findingRate, filesExamined = 200 }: { findingRate: n
         </div>
         <div>
           <div className="text-neutral-500 text-xs mb-1">Est. Fine Exposure</div>
-          <div className="text-xl font-bold text-orange-600">
+          <div className="text-2xl font-bold text-orange-600">
             ${(estimatedFines / 1000).toFixed(0)}K
           </div>
           <div className="text-neutral-500 text-xs">@ $5,000/violation avg</div>
         </div>
         <div>
           <div className="text-neutral-500 text-xs mb-1">Est. Total Exposure</div>
-          <div className="text-xl font-bold text-red-600">
+          <div className="text-2xl font-bold text-red-600">
             ${((estimatedFines + remediationLow) / 1000000).toFixed(1)}M–${((estimatedFines + remediationHigh) / 1000000).toFixed(1)}M
           </div>
           <div className="text-neutral-500 text-xs">Fines + remediation + legal</div>
@@ -353,6 +461,7 @@ export default function MarketConductTab() {
   const [activeView, setActiveView] = useState<'readiness' | 'findings' | 'states' | 'timeline'>('readiness');
   const [selectedCarrier, setSelectedCarrier] = useState('all');
   const [selectedCarrierForChecklist, setSelectedCarrierForChecklist] = useState<string | null>(carrierClients[0]?.name ?? null);
+  const [expandedNAICPracticeId, setExpandedNAICPracticeId] = useState<number | null>(null);
   const [examMode, setExamMode] = useState(false);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [hoveredFinding, setHoveredFinding] = useState<number | null>(null);
@@ -372,7 +481,10 @@ export default function MarketConductTab() {
       {/* Top Header */}
       <div className="flex justify-between items-center pb-4 mb-4 border-b border-neutral-200">
         <div>
-          <h2 className="text-xl font-bold text-neutral-900 m-0">Market Conduct Readiness</h2>
+          <h2 className="text-2xl font-bold text-neutral-900 m-0 flex items-center gap-3">
+            <Shield className="w-7 h-7 text-primary-600" />
+            Market Conduct Readiness
+          </h2>
           <p className="text-sm text-neutral-600 mt-1 mb-0">
             Continuous exam preparedness · Aligned to NAIC Unfair Claims Settlement Practices Act
           </p>
@@ -448,51 +560,69 @@ export default function MarketConductTab() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto pt-6 space-y-6">
+      <div className="flex-1 overflow-y-auto pt-6 space-y-8">
         {/* READINESS OVERVIEW */}
         {activeView === 'readiness' && (
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="flex flex-col gap-8">
+            {/* Hero Banner */}
+            <div className="bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-primary-600" />
+                <div>
+                  <p className="text-base font-semibold text-neutral-900 m-0">Every claim audited against NAIC 13. Every time.</p>
+                  <p className="text-sm text-neutral-600 mt-0.5 mb-0">100% coverage · 24+ business rules · Real-time monitoring</p>
+                </div>
+              </div>
+              <span className="flex items-center gap-1.5 text-green-600 font-semibold text-sm">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                LIVE
+              </span>
+            </div>
+
+            {/* KPI Section - Gradient + Shadow */}
+            <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl p-6 border-2 border-slate-200 shadow-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               <OverallReadinessCard score={overallScore} sublabel="↑ 13 pts since September" />
               <KPICard
-                icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
+                icon={<FolderOpen className="w-6 h-6 text-blue-600" />}
                 value="1,284"
                 label="Files Under Surveillance"
                 sublabel="100% coverage · All LOBs"
                 color="blue"
               />
               <KPICard
-                icon={<MapPin className="w-4 h-4 text-primary-600" />}
+                icon={<MapPin className="w-6 h-6 text-primary-600" />}
                 value="8 States"
                 label="Jurisdictions Monitored"
                 sublabel="142 state-specific rules active"
                 color="primary"
               />
               <KPICard
-                icon={<ClipboardList className="w-4 h-4 text-orange-600" />}
+                icon={<ClipboardList className="w-6 h-6 text-orange-600" />}
                 value="24"
                 label="Exam Criteria Tracked"
                 sublabel="Mapped to NAIC + state regs"
                 color="orange"
               />
               <KPICard
-                icon={<CheckCircle2 className="w-4 h-4 text-green-600" />}
+                icon={<CheckCircle2 className="w-6 h-6 text-green-600" />}
                 value="47 days"
                 label="Since Critical Violation"
                 sublabel="Last: FL timeliness · Jan 11"
                 color="green"
               />
+              </div>
+              <ExamExposureCalc findingRate={avgFindingRate} />
             </div>
 
-            <ExamExposureCalc findingRate={avgFindingRate} />
-
             {/* Two-column: Compact carrier table (left) + NAIC 13 checklist (right) */}
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,400px)_1fr] gap-6">
+            <div className="bg-white rounded-xl p-6 border-2 border-neutral-200 shadow-lg">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,400px)_1fr] gap-6">
               {/* Left: Compact carrier table */}
-              <div className="p-6 rounded-xl bg-white border border-neutral-200 max-w-full">
+              <div className="p-6 rounded-xl bg-slate-50/50 border border-neutral-200 max-w-full shadow-md hover:shadow-lg transition-shadow">
                 <div className="flex justify-between items-center mb-5">
                   <div>
-                    <div className="text-sm font-semibold text-neutral-900">Carrier Client Compliance</div>
+                    <div className="text-base font-semibold text-neutral-900">Carrier Client Compliance</div>
                     <div className="text-xs text-neutral-500 mt-0.5">Per-client readiness for TPA reporting</div>
                   </div>
                   <div className="flex gap-1 p-0.5 rounded-lg bg-slate-50 border border-neutral-200">
@@ -519,8 +649,8 @@ export default function MarketConductTab() {
                   {carrierClients.map((client) => (
                     <div
                       key={client.name}
-                      onClick={() => setSelectedCarrierForChecklist(client.name)}
-                      className={`grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      onClick={() => { setSelectedCarrierForChecklist(client.name); setExpandedNAICPracticeId(null); }}
+                      className={`grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
                         selectedCarrierForChecklist === client.name
                           ? 'bg-primary-50 border-primary-200'
                           : 'bg-slate-50 border-neutral-200 hover:bg-slate-100'
@@ -554,48 +684,155 @@ export default function MarketConductTab() {
               </div>
 
               {/* Right: NAIC 13 Prohibited Practices checklist */}
-              <div className="p-6 rounded-xl bg-white border border-neutral-200 min-w-0">
-                <div className="flex justify-between items-center mb-4">
+              <div className="p-6 rounded-xl bg-slate-50/50 border border-neutral-200 min-w-0 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <ClipboardList className="w-6 h-6 text-primary-600" />
                   <div>
-                    <div className="text-sm font-semibold text-neutral-900">NAIC 13 Prohibited Practices</div>
+                    <div className="text-base font-semibold text-neutral-900">NAIC 13 Prohibited Practices</div>
                     <div className="text-xs text-neutral-500 mt-0.5">
                       {selectedCarrierForChecklist
                         ? `Exam defense posture for ${selectedCarrierForChecklist}`
                         : 'Select a carrier to view compliance status'}
                     </div>
                   </div>
-                  <div className="flex gap-2 text-[10px]">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500" /> Compliant
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" /> At risk
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-red-500" /> Violation
-                    </span>
-                  </div>
+                </div>
+                {selectedCarrierForChecklist && (() => {
+                  const carrierStatus = carrierNAICStatus.find((c) => c.carrierName === selectedCarrierForChecklist);
+                  if (!carrierStatus) return null;
+                  const pass = Object.values(carrierStatus.practices).filter((p) => p === 'pass').length;
+                  const warn = Object.values(carrierStatus.practices).filter((p) => p === 'warn').length;
+                  const fail = Object.values(carrierStatus.practices).filter((p) => p === 'fail').length;
+                  return (
+                    <div className="mb-4 space-y-2">
+                      <div className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">Compliance Distribution</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 text-xs font-medium text-neutral-700">Compliant</div>
+                          <div className="flex-1 h-8 bg-neutral-200 rounded-lg overflow-hidden">
+                            <div className="h-full bg-green-500 flex items-center justify-end px-2" style={{ width: `${(pass / 13) * 100}%` }}>
+                              <span className="text-xs font-semibold text-white">{pass}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 text-xs font-medium text-neutral-700">At Risk</div>
+                          <div className="flex-1 h-8 bg-neutral-200 rounded-lg overflow-hidden">
+                            <div className="h-full bg-amber-500 flex items-center justify-end px-2" style={{ width: `${(warn / 13) * 100}%` }}>
+                              <span className="text-xs font-semibold text-white">{warn}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 text-xs font-medium text-neutral-700">Violations</div>
+                          <div className="flex-1 h-8 bg-neutral-200 rounded-lg overflow-hidden">
+                            <div className="h-full bg-red-500 flex items-center justify-end px-2" style={{ width: `${(fail / 13) * 100}%` }}>
+                              <span className="text-xs font-semibold text-white">{fail}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="flex gap-3 text-xs mb-4">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-green-500" /> Compliant
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" /> At risk
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500" /> Violation
+                  </span>
                 </div>
 
                 {selectedCarrierForChecklist ? (
                   <div className="space-y-2">
                     {naicPractices.map((practice) => {
                       const status = carrierNAICStatus.find((c) => c.carrierName === selectedCarrierForChecklist)?.practices[practice.id] ?? 'pass';
+                      const meta = carrierNAICDetails[selectedCarrierForChecklist]?.[practice.id] ?? {
+                        filesChecked: 1284,
+                        lastFlag: 'No flags in 90 days',
+                        trend: 'stable' as const,
+                      };
                       const statusClass = status === 'pass' ? 'bg-green-100 text-green-700' : status === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
                       const dotClass = status === 'pass' ? 'bg-green-500' : status === 'warn' ? 'bg-amber-500' : 'bg-red-500';
+                      const isExpandable = (status === 'warn' || status === 'fail') && meta.atRiskDetail;
+                      const isExpanded = expandedNAICPracticeId === practice.id;
+                      const TrendIcon = meta.trend === 'up' ? TrendingUp : meta.trend === 'down' ? TrendingDown : Minus;
+                      const trendColor = meta.trend === 'up' ? 'text-green-600' : meta.trend === 'down' ? 'text-red-600' : 'text-neutral-500';
                       return (
                         <div
                           key={practice.id}
-                          className="flex items-center gap-3 py-2 px-3 rounded-lg bg-slate-50 border border-neutral-100"
+                          className={`rounded-lg border border-neutral-100 overflow-hidden ${isExpandable ? 'cursor-pointer' : ''}`}
                         >
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
-                          <span className="text-sm text-neutral-900 flex-1 min-w-0">{practice.name}</span>
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase ${statusClass}`}>
-                            {status === 'pass' ? 'Compliant' : status === 'warn' ? 'At risk' : 'Violation'}
-                          </span>
+                          <div
+                            onClick={() => isExpandable && setExpandedNAICPracticeId((v) => (v === practice.id ? null : practice.id))}
+                            className={`flex flex-wrap items-center gap-x-2 gap-y-1 py-3 px-3 bg-slate-50 ${isExpandable ? 'hover:bg-slate-100' : ''}`}
+                          >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
+                            <span className="text-sm text-neutral-900 flex-1 min-w-0">{practice.name}</span>
+                            <span className="text-xs text-neutral-500 whitespace-nowrap">
+                              {meta.filesChecked.toLocaleString()} files
+                            </span>
+                            <span className="text-xs text-neutral-500 whitespace-nowrap">
+                              {meta.lastFlag}
+                            </span>
+                            <span className={`flex items-center gap-0.5 text-xs ${trendColor}`}>
+                              <TrendIcon className="w-3 h-3" />
+                              {meta.trend === 'up' ? 'improving' : meta.trend === 'down' ? 'degrading' : 'stable'}
+                            </span>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded uppercase ${statusClass}`}>
+                              {status === 'pass' ? 'Compliant' : status === 'warn' ? 'At risk' : 'Violation'}
+                            </span>
+                            {isExpandable && (
+                              <span className="text-neutral-400">
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </span>
+                            )}
+                          </div>
+                          {isExpandable && isExpanded && meta.atRiskDetail && (
+                            <div className={`px-3 py-3 border-t text-xs space-y-2 ${status === 'fail' ? 'bg-red-50/50 border-red-100' : 'bg-amber-50/50 border-amber-100'}`}>
+                              <div>
+                                <span className={`font-semibold ${status === 'fail' ? 'text-red-800' : 'text-amber-800'}`}>Files triggered:</span>{' '}
+                                <span className="text-neutral-700">{meta.atRiskDetail.files.join(', ')}</span>
+                              </div>
+                              <div>
+                                <span className={`font-semibold ${status === 'fail' ? 'text-red-800' : 'text-amber-800'}`}>States:</span>{' '}
+                                <span className="text-neutral-700">{meta.atRiskDetail.states.join(', ')}</span>
+                              </div>
+                              <div>
+                                <span className={`font-semibold ${status === 'fail' ? 'text-red-800' : 'text-amber-800'}`}>Adjusters/teams:</span>{' '}
+                                <span className="text-neutral-700">{meta.atRiskDetail.adjusters.join(', ')}</span>
+                              </div>
+                              <div>
+                                <span className={`font-semibold ${status === 'fail' ? 'text-red-800' : 'text-amber-800'}`}>Specific gap:</span>{' '}
+                                <span className="text-neutral-700">{meta.atRiskDetail.gap}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
+                    <div className="pt-3 mt-3 border-t border-neutral-200 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
+                      <span className="font-semibold text-neutral-900">
+                        {(() => {
+                          const carrierStatus = carrierNAICStatus.find((c) => c.carrierName === selectedCarrierForChecklist);
+                          if (!carrierStatus) return;
+                          const pass = Object.values(carrierStatus.practices).filter((p) => p === 'pass').length;
+                          const warn = Object.values(carrierStatus.practices).filter((p) => p === 'warn').length;
+                          const fail = Object.values(carrierStatus.practices).filter((p) => p === 'fail').length;
+                          return `${pass} of 13 Compliant · ${warn} At Risk · ${fail} Violations`;
+                        })()}
+                      </span>
+                      <span className="text-neutral-500">
+                        vs. 9 of 13 Compliant 90 days ago
+                      </span>
+                      <span className="flex items-center gap-1.5 text-green-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Last full evaluation: 2 minutes ago
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500 text-sm">
@@ -604,12 +841,13 @@ export default function MarketConductTab() {
                   </div>
                 )}
               </div>
+              </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-primary-50/50 border border-blue-200 flex items-center gap-4">
+            <div className="p-5 rounded-xl bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200 shadow-md flex items-center gap-4">
               <span className="text-2xl">💬</span>
               <div>
-                <div className="text-sm text-neutral-900 font-medium leading-relaxed italic">
+                <div className="text-base text-neutral-900 font-medium leading-relaxed italic">
                   &quot;The #1 exam finding is never that the decision was wrong — it&apos;s that you can&apos;t prove it was right.
                   GLIF monitors every file against the same checklist examiners use. When they open your file, it&apos;s already been audited.&quot;
                 </div>

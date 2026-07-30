@@ -7,6 +7,24 @@ export default {
   theme: {
     extend: {
       colors: {
+        page: '#FAFAFA',
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted: '#F5F5F5',
+          dark: '#0A0A0A'
+        },
+        text: {
+          DEFAULT: '#0A0A0A',
+          muted: '#525252',
+          faint: '#A3A3A3'
+        },
+        rust: {
+          DEFAULT: '#C2410C',
+          deep: '#9A3412',
+          tint: '#FFEDD5',
+          'tint-bd': '#FED7AA'
+        },
+        hair: '#E4E4E7',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -26,7 +44,13 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+        sans: ['"IBM Plex Sans"', 'ui-sans-serif', 'system-ui'],
+        body: ['"IBM Plex Sans"', 'ui-sans-serif', 'system-ui'],
+        heading: ['"Cabinet Grotesk"', '"IBM Plex Sans"', 'ui-sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace']
+      },
+      borderRadius: {
+        sm: '0.25rem'
       },
       boxShadow: {
         'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',

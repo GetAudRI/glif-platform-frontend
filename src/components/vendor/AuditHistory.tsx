@@ -110,27 +110,27 @@ const AuditHistory: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
-      case 'conditional': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'approved': return 'status-pass';
+      case 'conditional': return 'status-warning';
+      case 'rejected': return 'status-fail';
+      case 'pending': return 'status-na';
+      default: return 'status-na';
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-50 border-red-200 text-red-900';
-      case 'major': return 'bg-orange-50 border-orange-200 text-orange-900';
-      case 'minor': return 'bg-yellow-50 border-yellow-200 text-yellow-900';
-      default: return 'bg-gray-50 border-gray-200 text-gray-900';
+      case 'critical': return 'sev-critical';
+      case 'major': return 'sev-major';
+      case 'minor': return 'sev-minor';
+      default: return 'status-na';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-rust animate-spin" />
       </div>
     );
   }
@@ -142,19 +142,19 @@ const AuditHistory: React.FC = () => {
         {/* Back Button */}
         <button
           onClick={() => setSelectedAudit(null)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="btn-secondary mb-6"
         >
           <ChevronRight className="w-4 h-4 rotate-180" />
           <span>Back to Audit History</span>
         </button>
 
         {/* Audit Header */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <Factory className="w-6 h-6 text-cyan-600" />
-                <h2 className="text-2xl font-bold text-gray-900">
+                <Factory className="w-6 h-6 text-rust" strokeWidth={1.75} />
+                <h2 className="heading text-2xl text-gray-900">
                   {selectedAudit.vendor?.vendor_name}
                 </h2>
               </div>
@@ -169,7 +169,7 @@ const AuditHistory: React.FC = () => {
                 </span>
               </div>
             </div>
-            <span className={`px-4 py-2 rounded-full text-sm font-semibold border ${getStatusColor(selectedAudit.compliance_status)}`}>
+            <span className={`status-badge ${getStatusColor(selectedAudit.compliance_status)}`}>
               {selectedAudit.compliance_status.toUpperCase()}
             </span>
           </div>
@@ -177,27 +177,27 @@ const AuditHistory: React.FC = () => {
           {/* Metrics */}
           <div className="grid grid-cols-4 gap-4 mt-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-cyan-600">{selectedAudit.overall_score?.toFixed(0)}%</div>
-              <div className="text-sm text-gray-600">Overall Score</div>
+              <div className="heading text-3xl tracking-tighter leading-none num text-neutral-950">{selectedAudit.overall_score?.toFixed(0)}%</div>
+              <div className="overline mt-3">Overall Score</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-red-600">{selectedAudit.critical_findings}</div>
-              <div className="text-sm text-gray-600">Critical</div>
+              <div className="heading text-3xl tracking-tighter leading-none num text-red-700">{selectedAudit.critical_findings}</div>
+              <div className="overline mt-3">Critical</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">{selectedAudit.major_findings}</div>
-              <div className="text-sm text-gray-600">Major</div>
+              <div className="heading text-3xl tracking-tighter leading-none num text-orange-700">{selectedAudit.major_findings}</div>
+              <div className="overline mt-3">Major</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-600">{selectedAudit.minor_findings}</div>
-              <div className="text-sm text-gray-600">Minor</div>
+              <div className="heading text-3xl tracking-tighter leading-none num text-yellow-700">{selectedAudit.minor_findings}</div>
+              <div className="overline mt-3">Minor</div>
             </div>
           </div>
         </div>
 
         {/* Findings List */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="card p-6">
+          <h3 className="heading text-lg text-gray-900 mb-4">
             Detailed Findings ({selectedAudit.findings_detail?.length || 0})
           </h3>
 
@@ -211,24 +211,24 @@ const AuditHistory: React.FC = () => {
               {selectedAudit.findings_detail.map((finding, index) => (
                 <div
                   key={finding.id}
-                  className={`border rounded-lg p-4 ${getSeverityColor(finding.severity)}`}
+                  className={`border rounded-sm p-4 ${getSeverityColor(finding.severity)}`}
                 >
                   {/* Finding Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase">
+                        <span className="pill">
                           {finding.severity}
                         </span>
                         <span className="text-sm text-gray-600">Finding #{index + 1}</span>
                       </div>
                       <h4 className="font-semibold text-gray-900">{finding.rule_name}</h4>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      finding.status === 'open' ? 'bg-red-100 text-red-800' :
-                      finding.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                      finding.status === 'closed' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`status-badge ${
+                      finding.status === 'open' ? 'status-fail' :
+                      finding.status === 'in_progress' ? 'status-warning' :
+                      finding.status === 'closed' ? 'status-pass' :
+                      'status-na'
                     }`}>
                       {finding.status.replace('_', ' ').toUpperCase()}
                     </span>
@@ -239,8 +239,8 @@ const AuditHistory: React.FC = () => {
 
                   {/* Evidence */}
                   {finding.evidence_excerpt && (
-                    <div className="bg-white bg-opacity-50 rounded p-3 mb-3">
-                      <div className="text-xs font-semibold text-gray-600 mb-1">Evidence:</div>
+                    <div className="bg-white border border-hair rounded-sm p-3 mb-3">
+                      <div className="overline mb-1">Evidence</div>
                       <div className="text-sm text-gray-700 italic">"{finding.evidence_excerpt}"</div>
                       {finding.evidence_page_number && (
                         <div className="text-xs text-gray-500 mt-1">Page {finding.evidence_page_number}</div>
@@ -263,8 +263,8 @@ const AuditHistory: React.FC = () => {
 
                   {/* CAPA Description (if exists) */}
                   {finding.capa_description && (
-                    <div className="mt-3 pt-3 border-t border-gray-300">
-                      <div className="text-xs font-semibold text-gray-600 mb-1">CAPA Plan:</div>
+                    <div className="mt-3 pt-3 border-t border-hair">
+                      <div className="overline mb-1">CAPA Plan</div>
                       <div className="text-sm text-gray-700">{finding.capa_description}</div>
                     </div>
                   )}
@@ -281,12 +281,13 @@ const AuditHistory: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Audit History</h2>
+        <div className="overline mb-2">Audit Archive</div>
+        <h2 className="heading text-2xl text-gray-900 mb-2">Audit History</h2>
         <p className="text-gray-600">View all completed vendor compliance audits</p>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+      <div className="card p-4 mb-6">
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -296,7 +297,7 @@ const AuditHistory: React.FC = () => {
               placeholder="Search by vendor name or audit ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+              className="field-input pl-10"
             />
           </div>
 
@@ -306,7 +307,7 @@ const AuditHistory: React.FC = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+              className="field-input"
             >
               <option value="all">All Status</option>
               <option value="approved">Approved</option>
@@ -320,7 +321,7 @@ const AuditHistory: React.FC = () => {
 
       {/* Audits List */}
       {filteredAudits.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="border border-dashed border-hair bg-white p-12 text-center">
           <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600">
             {searchTerm || filterStatus !== 'all' 
@@ -334,14 +335,14 @@ const AuditHistory: React.FC = () => {
             <button
               key={audit.id}
               onClick={() => loadAuditDetails(audit)}
-              className="w-full bg-white rounded-lg border border-gray-200 p-4 hover:border-cyan-500 hover:shadow-md transition-all text-left"
+              className="w-full bg-white rounded-sm border border-hair p-4 hover:bg-neutral-50 transition-colors text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <Factory className="w-5 h-5 text-cyan-600" />
+                    <Factory className="w-5 h-5 text-rust" strokeWidth={1.75} />
                     <h3 className="font-semibold text-gray-900">{audit.vendor?.vendor_name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(audit.compliance_status)}`}>
+                    <span className={`status-badge ${getStatusColor(audit.compliance_status)}`}>
                       {audit.compliance_status}
                     </span>
                   </div>
@@ -368,27 +369,27 @@ const AuditHistory: React.FC = () => {
 
       {/* Summary Stats */}
       <div className="mt-6 grid grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-          <div className="text-2xl font-bold text-blue-600">{audits.length}</div>
-          <div className="text-sm text-blue-900">Total Audits</div>
+        <div className="bg-white rounded-sm p-4 border border-hair">
+          <div className="heading text-3xl tracking-tighter leading-none num text-neutral-950">{audits.length}</div>
+          <div className="overline mt-3">Total Audits</div>
         </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-          <div className="text-2xl font-bold text-green-600">
+        <div className="bg-white rounded-sm p-4 border border-hair">
+          <div className="heading text-3xl tracking-tighter leading-none num text-green-700">
             {audits.filter(a => a.compliance_status === 'approved').length}
           </div>
-          <div className="text-sm text-green-900">Approved</div>
+          <div className="overline mt-3">Approved</div>
         </div>
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200">
-          <div className="text-2xl font-bold text-yellow-600">
+        <div className="bg-white rounded-sm p-4 border border-hair">
+          <div className="heading text-3xl tracking-tighter leading-none num text-yellow-700">
             {audits.filter(a => a.compliance_status === 'conditional').length}
           </div>
-          <div className="text-sm text-yellow-900">Conditional</div>
+          <div className="overline mt-3">Conditional</div>
         </div>
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
-          <div className="text-2xl font-bold text-red-600">
+        <div className="bg-white rounded-sm p-4 border border-hair">
+          <div className="heading text-3xl tracking-tighter leading-none num text-red-700">
             {audits.filter(a => a.compliance_status === 'rejected').length}
           </div>
-          <div className="text-sm text-red-900">Rejected</div>
+          <div className="overline mt-3">Rejected</div>
         </div>
       </div>
     </div>

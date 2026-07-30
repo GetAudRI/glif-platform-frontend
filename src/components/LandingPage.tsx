@@ -14,7 +14,6 @@ interface UseCaseCard {
     title: string;
     description: string;
     icon: any;
-    gradient: string;
     features: string[];
     status: 'active' | 'coming-soon';
     route?: string;
@@ -27,7 +26,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Claims',
         description: 'Comprehensive batch claim auditing with AI-powered portfolio analysis',
         icon: FileSearch,
-        gradient: 'from-blue-600 to-blue-800',
         features: [
             'Batch claim auditing',
             'Portfolio view & analytics',
@@ -42,7 +40,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Compliance',
         description: 'GxP compliance auditing for Life Sciences vendors with automated document review',
         icon: Factory,
-        gradient: 'from-teal-500 to-cyan-600',
         features: [
             'Vendor management',
             'GxP rules library (49 rules)',
@@ -57,7 +54,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Contracts',
         description: 'Intelligent contract validation against playbook standards',
         icon: FileText,
-        gradient: 'from-emerald-500 to-green-600',
         features: [
             'Contract validation',
             'Playbook standards',
@@ -72,7 +68,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Spend',
         description: 'Automated invoice validation against contract rules and compliance checking',
         icon: DollarSign,
-        gradient: 'from-purple-500 to-indigo-600',
         features: [
             'Invoice validation against contracts',
             'Automated compliance checking',
@@ -87,7 +82,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Loan Covenant',
         description: 'Loan agreement validation and covenant compliance checking',
         icon: DollarSign,
-        gradient: 'from-purple-500 to-indigo-600',
         features: [
             'Loan agreement validation',
             'Covenant compliance',
@@ -101,7 +95,6 @@ const useCases: UseCaseCard[] = [
         title: 'AudRI Underwriting',
         description: 'Underwriting decision audit and policy compliance verification',
         icon: ClipboardCheck,
-        gradient: 'from-orange-500 to-red-600',
         features: [
             'Underwriting audit',
             'Policy compliance',
@@ -162,61 +155,58 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="min-h-screen bg-page text-neutral-950">
             {/* Header */}
-            <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 py-2">
-                    <div className="flex items-center justify-between">
-                        {/* Left spacer for balance */}
-                        <div className="flex-1"></div>
-                        
-                        {/* Center - Logo and Title */}
-                        <div className="flex items-center gap-4">
-                            <img 
-                                src="/audri-logo.png" 
-                                alt="AudRI Platform" 
-                                className="h-20 w-fit"
+            <div className="bg-white border-b border-hair sticky top-0 z-50">
+                <div className="px-8 md:px-12 py-4">
+                    <div className="flex items-center justify-between gap-8">
+                        <button
+                            onClick={() => navigate('/')}
+                            className="flex items-center gap-4 text-left hover:opacity-80 transition-opacity"
+                        >
+                            <img
+                                src="/audri-logo.png"
+                                alt="AudRI Platform"
+                                className="h-14 w-fit"
                             />
                             <div>
-                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                                    AudRI
-                                </h1>
-                                <p className="text-[22px] text-black font-semibold mt-1">The Audit Platform</p>
+                                <div className="overline mb-1">The Audit Platform</div>
+                                <h1 className="heading text-3xl tracking-tight">AudRI</h1>
                             </div>
-                        </div>
-                        
+                        </button>
+
                         {/* Right - Auth buttons and branch badge */}
-                        <div className="flex-1 flex flex-col items-end gap-2">
+                        <div className="flex flex-col items-end gap-2">
                             <div className="flex items-center gap-3">
                                 {authenticated ? (
                                     <>
-                                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
-                                            <User className="w-4 h-4" />
-                                            <span className="text-sm font-medium">{username}</span>
+                                        <div className="pill border-hair text-neutral-700">
+                                            <User className="w-3 h-3" strokeWidth={1.75} />
+                                            {username}
                                         </div>
                                         <button
                                             onClick={handleLogout}
-                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                                            className="btn-secondary"
                                         >
-                                            <LogOut className="w-4 h-4" />
+                                            <LogOut className="w-4 h-4" strokeWidth={1.75} />
                                             Logout
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                        <button className="btn-secondary">
                                             Documentation
                                         </button>
                                         <button
                                             onClick={() => setShowLoginModal(true)}
-                                            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                                            className="btn-primary"
                                         >
                                             Login
                                         </button>
                                     </>
                                 )}
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${branchBadgeClass}`}>
+                            <span className={`pill ${branchBadgeClass}`}>
                                 {`Branch: ${branchLabel}`}
                             </span>
                         </div>
@@ -225,19 +215,28 @@ export default function LandingPage() {
             </div>
 
             {/* Hero Section */}
-            <div className="max-w-7xl mx-auto px-6 py-12">
-                <div className="text-center mb-12">
-                    <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                        Choose Your Audit Use Case
-                    </h2>
-                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                        Select from our suite of solutions designed to streamline operations,
-                        ensure compliance, and accelerate decision-making.
-                    </p>
+            <div className="px-8 md:px-12 py-12">
+                <div className="mb-10 max-w-5xl">
+                    <div className="overline mb-4">Workspace · Compliance</div>
+                    <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+                        <div>
+                            <h2 className="heading text-4xl md:text-6xl tracking-tighter">
+                                Choose Your Audit Use Case
+                            </h2>
+                            <p className="text-base md:text-lg text-neutral-600 max-w-3xl mt-4 leading-relaxed">
+                                Select from a suite of inspection-grade workflows designed to streamline operations,
+                                preserve auditability, and accelerate regulated decisions.
+                            </p>
+                        </div>
+                        <div className="hidden lg:flex items-center gap-2 border border-hair bg-white px-4 py-3 rounded-sm">
+                            <Sparkles className="w-4 h-4 text-rust" strokeWidth={1.75} />
+                            <span className="mono text-xs text-neutral-600">Swiss control room pilot</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Use Case Cards */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 border-l border-t border-hair bg-white mb-12">
                     {useCases.map((useCase) => {
                         const Icon = useCase.icon;
                         const isComingSoon = useCase.status === 'coming-soon';
@@ -247,76 +246,52 @@ export default function LandingPage() {
                                 key={useCase.id}
                                 onClick={() => handleCardClick(useCase)}
                                 className={`
-                  relative bg-white rounded-2xl shadow-lg border-2 border-gray-100 overflow-hidden
-                  transition-all duration-300 group
-                  ${isComingSoon
-                                        ? 'opacity-75 cursor-not-allowed'
-                                        : 'cursor-pointer hover:shadow-2xl hover:-translate-y-2 hover:border-blue-300'
+                                    relative border-r border-b border-hair p-6 transition-colors group
+                                    ${isComingSoon
+                                        ? 'opacity-70 cursor-not-allowed bg-neutral-50'
+                                        : 'cursor-pointer hover:bg-neutral-50'
                                     }
-                `}
+                                `}
                             >
-                                {/* Gradient Header */}
-                                <div className={`h-32 bg-gradient-to-br ${useCase.gradient} relative overflow-hidden`}>
-                                    <div className="absolute inset-0 bg-black/10"></div>
-                                    <div className="absolute top-4 right-4">
-                                        {isComingSoon ? (
-                                            <span className="px-3 py-1 bg-white/90 text-gray-700 text-xs font-semibold rounded-full flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                Coming Soon
-                                            </span>
-                                        ) : (
-                                            <span className="px-3 py-1 bg-white/90 text-green-700 text-xs font-semibold rounded-full flex items-center gap-1">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                                Active
-                                            </span>
-                                        )}
+                                <div className="flex items-start justify-between gap-4 mb-8">
+                                    <div className="w-11 h-11 border border-hair rounded-sm flex items-center justify-center bg-white text-neutral-900">
+                                        <Icon className="w-5 h-5" strokeWidth={1.75} />
                                     </div>
-                                    <div className="absolute bottom-4 left-6">
-                                        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border-2 border-white/30">
-                                            <Icon className="w-8 h-8 text-white" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="p-6 pt-8">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                        {useCase.title}
-                                    </h3>
-                                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-                                        {useCase.description}
-                                    </p>
-
-                                    {/* Features */}
-                                    <ul className="space-y-2 mb-6">
-                                        {useCase.features.map((feature, idx) => (
-                                            <li key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                                                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${useCase.gradient}`}></div>
-                                                {feature}
-                                            </li>
-                                        ))}
-                                    </ul>
-
-                                    {/* Action Button */}
-                                    {!isComingSoon && (
-                                        <button
-                                            className={`
-                        w-full py-3 px-4 rounded-lg font-medium text-white
-                        bg-gradient-to-r ${useCase.gradient}
-                        hover:shadow-lg transition-all duration-300
-                        flex items-center justify-center gap-2
-                        group-hover:gap-3
-                      `}
-                                        >
-                                            Launch Module
-                                            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                                        </button>
+                                    {isComingSoon ? (
+                                        <span className="status-badge status-na">
+                                            <Clock className="w-3 h-3" strokeWidth={1.75} />
+                                            Coming Soon
+                                        </span>
+                                    ) : (
+                                        <span className="status-badge status-pass">
+                                            <CheckCircle2 className="w-3 h-3" strokeWidth={1.75} />
+                                            Active
+                                        </span>
                                     )}
                                 </div>
 
-                                {/* Hover Effect Overlay */}
+                                <div className="overline mb-3">{useCase.id.replace(/-/g, ' ')}</div>
+                                <h3 className="heading text-2xl text-neutral-950 mb-3">
+                                    {useCase.title}
+                                </h3>
+                                <p className="text-sm text-neutral-600 mb-6 leading-relaxed">
+                                    {useCase.description}
+                                </p>
+
+                                <ul className="space-y-2 mb-8">
+                                    {useCase.features.map((feature, idx) => (
+                                        <li key={idx} className="flex items-center gap-2 text-sm text-neutral-700">
+                                            <span className="w-1.5 h-1.5 bg-rust rounded-sm"></span>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+
                                 {!isComingSoon && (
-                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/5 group-hover:to-purple-500/5 transition-all duration-300 pointer-events-none"></div>
+                                    <button className="btn-primary w-full">
+                                        Launch Module
+                                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                                    </button>
                                 )}
                             </div>
                         );
@@ -324,23 +299,18 @@ export default function LandingPage() {
                 </div>
 
                 {/* Stats Section */}
-                <div className="grid md:grid-cols-4 gap-6 mt-12">
-                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-                        <div className="text-3xl font-bold text-blue-600 mb-1">3</div>
-                        <div className="text-sm text-gray-600">Active Modules</div>
-                    </div>
-                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-                        <div className="text-3xl font-bold text-green-600 mb-1">2</div>
-                        <div className="text-sm text-gray-600">Coming Soon</div>
-                    </div>
-                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-                        <div className="text-3xl font-bold text-purple-600 mb-1">100%</div>
-                        <div className="text-sm text-gray-600">AI-Powered</div>
-                    </div>
-                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-                        <div className="text-3xl font-bold text-orange-600 mb-1">24/7</div>
-                        <div className="text-sm text-gray-600">Availability</div>
-                    </div>
+                <div className="grid md:grid-cols-4 border-l border-t border-hair bg-white">
+                    {[
+                        ['3', 'Active Modules'],
+                        ['2', 'Coming Soon'],
+                        ['100%', 'AI-Powered'],
+                        ['24/7', 'Availability'],
+                    ].map(([value, label]) => (
+                        <div key={label} className="p-6 border-r border-b border-hair">
+                            <div className="heading text-4xl font-medium tracking-tighter leading-none text-neutral-950 num">{value}</div>
+                            <div className="overline mt-4">{label}</div>
+                        </div>
+                    ))}
                 </div>
             </div>
 

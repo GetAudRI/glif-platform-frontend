@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Filter, Shield, AlertTriangle, Info, CheckCircle } from 'lucide-react';
-import { listRules, getRuleCategories, searchRules, GxPRule } from '../../services/vendorAuditApi';
+import { listRules, getRuleCategories, GxPRule } from '../../services/vendorAuditApi';
 
 const GxPRulesLibrary: React.FC = () => {
   const [rules, setRules] = useState<GxPRule[]>([]);
@@ -97,11 +97,11 @@ const GxPRulesLibrary: React.FC = () => {
 
   const getSeverityBadge = (severity: string) => {
     const colors = {
-      critical: 'bg-red-100 text-red-800',
-      major: 'bg-orange-100 text-orange-800',
-      minor: 'bg-yellow-100 text-yellow-800'
+      critical: 'sev-critical',
+      major: 'sev-major',
+      minor: 'sev-minor'
     };
-    return colors[severity as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[severity as keyof typeof colors] || 'status-na';
   };
 
   const getCategoryLabel = (category: string) => {
@@ -118,7 +118,7 @@ const GxPRulesLibrary: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rust mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading GxP rules...</p>
         </div>
       </div>
@@ -130,8 +130,11 @@ const GxPRulesLibrary: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <BookOpen className="h-8 w-8 text-cyan-600" />
-          <h2 className="text-2xl font-bold text-gray-900">GxP Rules Library</h2>
+          <BookOpen className="h-6 w-6 text-rust" strokeWidth={1.75} />
+          <div>
+            <div className="overline mb-1">Rules Library</div>
+            <h2 className="heading text-2xl text-gray-900">GxP Rules Library</h2>
+          </div>
         </div>
         <p className="text-gray-600">
           Browse {rules.length} GxP compliance rules across 4 regulatory standards
@@ -139,7 +142,7 @@ const GxPRulesLibrary: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="card p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
@@ -149,7 +152,7 @@ const GxPRulesLibrary: React.FC = () => {
               placeholder="Search rules..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="field-input pl-10"
             />
           </div>
 
@@ -157,7 +160,7 @@ const GxPRulesLibrary: React.FC = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="field-input"
           >
             <option value="all">All Categories ({rules.length})</option>
             {Object.entries(categories).map(([key, data]: [string, any]) => (
@@ -171,7 +174,7 @@ const GxPRulesLibrary: React.FC = () => {
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="field-input"
           >
             <option value="all">All Severities</option>
             <option value="critical">Critical</option>
@@ -183,7 +186,7 @@ const GxPRulesLibrary: React.FC = () => {
           <select
             value={selectedVendorType}
             onChange={(e) => setSelectedVendorType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="field-input"
           >
             <option value="all">All Vendor Types</option>
             <option value="Software_Vendor">Software Vendor</option>
@@ -206,7 +209,7 @@ const GxPRulesLibrary: React.FC = () => {
                 setSelectedVendorType('all');
                 setSearchTerm('');
               }}
-              className="ml-2 text-cyan-600 hover:text-cyan-700 font-medium"
+              className="ml-2 text-rust hover:text-rust-deep font-medium"
             >
               Clear filters
             </button>
@@ -218,9 +221,9 @@ const GxPRulesLibrary: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
           {filteredRules.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <div className="border border-dashed border-hair bg-white p-12 text-center">
               <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No rules found</h3>
+              <h3 className="heading mt-4 text-lg text-gray-900">No rules found</h3>
               <p className="mt-2 text-sm text-gray-500">
                 Try adjusting your search or filters
               </p>
@@ -230,10 +233,10 @@ const GxPRulesLibrary: React.FC = () => {
               <div
                 key={rule.id}
                 onClick={() => setSelectedRule(rule)}
-                className={`bg-white rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                className={`bg-white rounded-sm border p-4 cursor-pointer transition-colors ${
                   selectedRule?.id === rule.id
-                    ? 'border-cyan-500 shadow-md'
-                    : 'border-gray-200 hover:border-cyan-300 hover:shadow-sm'
+                    ? 'border-rust bg-rust-tint'
+                    : 'border-hair hover:bg-neutral-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -244,14 +247,14 @@ const GxPRulesLibrary: React.FC = () => {
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">{rule.description}</p>
                     <div className="flex items-center gap-2 mt-3">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityBadge(rule.severity_if_missing)}`}>
+                      <span className={`pill ${getSeverityBadge(rule.severity_if_missing)}`}>
                         {rule.severity_if_missing}
                       </span>
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-cyan-100 text-cyan-800">
+                      <span className="pill border-hair text-neutral-700">
                         {getCategoryLabel(rule.category)}
                       </span>
                       {rule.auto_checkable && (
-                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                        <span className="status-badge status-pass">
                           <CheckCircle className="h-3 w-3" />
                           Auto-check
                         </span>
@@ -267,7 +270,7 @@ const GxPRulesLibrary: React.FC = () => {
         {/* Rule Details Panel */}
         <div className="lg:sticky lg:top-6">
           {selectedRule ? (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="card p-6">
               <div className="flex items-start gap-3 mb-4">
                 {getSeverityIcon(selectedRule.severity_if_missing)}
                 <div className="flex-1">
@@ -275,14 +278,14 @@ const GxPRulesLibrary: React.FC = () => {
                     {selectedRule.rule_name}
                   </h2>
                   <div className="flex flex-wrap gap-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityBadge(selectedRule.severity_if_missing)}`}>
+                    <span className={`pill ${getSeverityBadge(selectedRule.severity_if_missing)}`}>
                       {selectedRule.severity_if_missing}
                     </span>
-                    <span className="px-2 py-1 rounded text-xs font-medium bg-cyan-100 text-cyan-800">
+                    <span className="pill border-hair text-neutral-700">
                       {getCategoryLabel(selectedRule.category)}
                     </span>
                     {selectedRule.auto_checkable && (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                      <span className="status-badge status-pass">
                         <CheckCircle className="h-3 w-3" />
                         Auto-checkable
                       </span>
@@ -293,27 +296,27 @@ const GxPRulesLibrary: React.FC = () => {
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Rule ID</h3>
+                  <h3 className="overline mb-1">Rule ID</h3>
                   <p className="text-sm text-gray-600 font-mono">{selectedRule.id}</p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Description</h3>
+                  <h3 className="overline mb-1">Description</h3>
                   <p className="text-sm text-gray-600">{selectedRule.description}</p>
                 </div>
 
                 {selectedRule.regulation_reference && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-1">Regulation Reference</h3>
+                    <h3 className="overline mb-1">Regulation Reference</h3>
                     <p className="text-sm text-gray-600 font-mono">{selectedRule.regulation_reference}</p>
                   </div>
                 )}
 
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Applicable Vendor Types</h3>
+                  <h3 className="overline mb-1">Applicable Vendor Types</h3>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {selectedRule.applicable_vendor_types.map((type) => (
-                      <span key={type} className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
+                      <span key={type} className="pill border-hair text-neutral-700">
                         {type.replace(/_/g, ' ')}
                       </span>
                     ))}
@@ -322,8 +325,8 @@ const GxPRulesLibrary: React.FC = () => {
 
                 {selectedRule.validation_logic && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Validation Logic</h3>
-                    <div className="bg-gray-50 rounded-lg p-3 text-xs">
+                    <h3 className="overline mb-2">Validation Logic</h3>
+                    <div className="bg-neutral-50 border border-hair rounded-sm p-3 text-xs">
                       <pre className="text-gray-600 whitespace-pre-wrap">
                         {JSON.stringify(selectedRule.validation_logic, null, 2)}
                       </pre>
@@ -331,18 +334,18 @@ const GxPRulesLibrary: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex items-center gap-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
+                <div className="flex items-center gap-4 pt-4 border-t border-hair text-xs text-gray-500">
                   <span>Created: {new Date(selectedRule.created_at).toLocaleDateString()}</span>
-                  <span className={`px-2 py-1 rounded ${selectedRule.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`status-badge ${selectedRule.active ? 'status-pass' : 'status-na'}`}>
                     {selectedRule.active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+            <div className="bg-white rounded-sm border border-dashed border-hair p-12 text-center">
               <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No rule selected</h3>
+              <h3 className="heading mt-4 text-lg text-gray-900">No rule selected</h3>
               <p className="mt-2 text-sm text-gray-500">
                 Click on a rule to view its details
               </p>

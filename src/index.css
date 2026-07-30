@@ -1,61 +1,254 @@
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@300,400,500,700,800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {
+  --page: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-muted: #F5F5F5;
+  --surface-dark: #0A0A0A;
+  --text: #0A0A0A;
+  --text-muted: #525252;
+  --text-faint: #A3A3A3;
+  --hair: #E4E4E7;
+  --rust: #C2410C;
+  --rust-deep: #9A3412;
+  --rust-tint: #FFEDD5;
+  --rust-tint-bd: #FED7AA;
+  --sev-critical-bg: #FEE2E2;
+  --sev-critical-fg: #991B1B;
+  --sev-critical-bd: #FCA5A5;
+  --sev-major-bg: #FFEDD5;
+  --sev-major-fg: #9A3412;
+  --sev-major-bd: #FED7AA;
+  --sev-minor-bg: #FEF3C7;
+  --sev-minor-fg: #854D0E;
+  --sev-minor-bd: #FDE68A;
+  --sev-observation-bg: #DCFCE7;
+  --sev-observation-fg: #166534;
+  --sev-observation-bd: #BBF7D0;
+  --pass-bg: #D1FAE5;
+  --pass-fg: #064E3B;
+  --conditional-bg: #FEF3C7;
+  --conditional-fg: #92400E;
+  --fail-bg: #FEE2E2;
+  --fail-fg: #991B1B;
+  --missing-bg: #F5F5F4;
+  --missing-fg: #44403C;
+  --font-heading: "Cabinet Grotesk", "IBM Plex Sans", ui-sans-serif, system-ui;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-feature-settings: "ss01" on, "cv11" on;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  background-color: rgba(74, 120, 211, 1);
+  min-height: 100vh;
+  background: var(--page);
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: var(--font-mono);
 }
 
-/* Professional button base styles */
 @layer components {
+  .heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+
+  .overline {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: #737373;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+  }
+
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .border-hair {
+    border-color: var(--hair);
+  }
+
   .btn-primary {
-    @apply px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors;
+    align-items: center;
+    background: var(--rust);
+    border-radius: 0.25rem;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    background: var(--rust-deep);
+  }
+
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
   
   .btn-secondary {
-    @apply px-4 py-2 bg-white text-neutral-700 text-sm font-medium border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--hair);
+    border-radius: 0.25rem;
+    color: var(--text);
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    background: #FAFAFA;
+  }
+
+  .btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
   
   .btn-danger {
-    @apply px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors;
+    align-items: center;
+    background: #B91C1C;
+    border-radius: 0.25rem;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s ease;
+  }
+
+  .btn-danger:hover {
+    background: #991B1B;
   }
   
   .card {
-    @apply bg-white rounded-lg border border-neutral-200 shadow-sm;
+    background: #fff;
+    border: 1px solid var(--hair);
+    border-radius: 0.25rem;
+  }
+
+  .field-input {
+    background: #fff;
+    border: 1px solid var(--hair);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+  }
+
+  .field-input:focus {
+    border-color: var(--rust);
+    outline: none;
+  }
+
+  .pill {
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    gap: 0.25rem;
+    letter-spacing: 0.08em;
+    padding: 2px 0.5rem;
+    text-transform: uppercase;
   }
   
   .status-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium;
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    gap: 0.25rem;
+    letter-spacing: 0.08em;
+    padding: 2px 0.5rem;
+    text-transform: uppercase;
   }
   
   .status-pass {
-    @apply bg-green-50 text-green-700 border border-green-200;
+    background: var(--pass-bg);
+    border-color: #A7F3D0;
+    color: var(--pass-fg);
   }
   
   .status-warning {
-    @apply bg-amber-50 text-amber-700 border border-amber-200;
+    background: var(--conditional-bg);
+    border-color: #FDE68A;
+    color: var(--conditional-fg);
   }
   
   .status-fail {
-    @apply bg-red-50 text-red-700 border border-red-200;
+    background: var(--fail-bg);
+    border-color: #FCA5A5;
+    color: var(--fail-fg);
   }
   
   .status-na {
-    @apply bg-neutral-100 text-neutral-600 border border-neutral-200;
+    background: var(--missing-bg);
+    border-color: var(--hair);
+    color: var(--missing-fg);
+  }
+
+  .sev-critical {
+    background: var(--sev-critical-bg);
+    border-color: var(--sev-critical-bd);
+    color: var(--sev-critical-fg);
+  }
+
+  .sev-major {
+    background: var(--sev-major-bg);
+    border-color: var(--sev-major-bd);
+    color: var(--sev-major-fg);
+  }
+
+  .sev-minor {
+    background: var(--sev-minor-bg);
+    border-color: var(--sev-minor-bd);
+    color: var(--sev-minor-fg);
+  }
+
+  .sev-observation {
+    background: var(--sev-observation-bg);
+    border-color: var(--sev-observation-bd);
+    color: var(--sev-observation-fg);
   }
 }
 

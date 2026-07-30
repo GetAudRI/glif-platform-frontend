@@ -21,7 +21,6 @@ import {
   runComplianceCheck,
   listRules,
   type Vendor,
-  type GxPRule,
   type VendorAudit,
   type VendorAuditFinding 
 } from '../../services/vendorAuditApi';
@@ -62,26 +61,22 @@ const GXP_STANDARDS = [
   {
     id: '21_CFR_Part_11',
     name: '21 CFR Part 11',
-    description: 'FDA Electronic Records & Signatures',
-    color: 'bg-blue-100 text-blue-800'
+    description: 'FDA Electronic Records & Signatures'
   },
   {
     id: 'EU_GMP_Annex_11',
     name: 'EU GMP Annex 11',
-    description: 'EU Computerized Systems',
-    color: 'bg-green-100 text-green-800'
+    description: 'EU Computerized Systems'
   },
   {
     id: 'ICH_Q7',
     name: 'ICH Q7',
-    description: 'API Manufacturing Quality',
-    color: 'bg-purple-100 text-purple-800'
+    description: 'API Manufacturing Quality'
   },
   {
     id: 'ALCOA_Plus',
     name: 'ALCOA+',
-    description: 'Data Integrity Principles',
-    color: 'bg-orange-100 text-orange-800'
+    description: 'Data Integrity Principles'
   }
 ];
 
@@ -107,7 +102,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
   // Step 4 & 5: Compliance Check
   const [isRunningCheck, setIsRunningCheck] = useState(false);
   const [complianceResults, setComplianceResults] = useState<ComplianceResults | null>(null);
-  const [createdAudit, setCreatedAudit] = useState<VendorAudit | null>(null);
+  const [, setCreatedAudit] = useState<VendorAudit | null>(null);
 
   // Load vendors on mount
   useEffect(() => {
@@ -214,13 +209,14 @@ const SingleVendorAuditWorkflow: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Select Vendor to Audit</h3>
+              <div className="overline mb-2">Step 01</div>
+              <h3 className="heading text-lg text-gray-900">Select Vendor to Audit</h3>
               <p className="text-sm text-gray-600 mt-1">Choose an existing vendor from your portfolio</p>
             </div>
 
             {loadingVendors ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-rust animate-spin" />
               </div>
             ) : vendors.length === 0 ? (
               <div className="text-center py-12">
@@ -233,23 +229,23 @@ const SingleVendorAuditWorkflow: React.FC = () => {
                   <button
                     key={vendor.id}
                     onClick={() => setSelectedVendor(vendor)}
-                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    className={`p-4 border rounded-sm text-left transition-colors ${
                       selectedVendor?.id === vendor.id
-                        ? 'border-cyan-500 bg-cyan-50'
+                        ? 'border-rust bg-rust-tint'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <div className="text-2xl">🏭</div>
+                          <Factory className="w-5 h-5 text-rust" strokeWidth={1.75} />
                           <div>
                             <h4 className="font-semibold text-gray-900">{vendor.vendor_name}</h4>
                             <p className="text-sm text-gray-600">{vendor.vendor_type.replace(/_/g, ' ')}</p>
                           </div>
                         </div>
                         <div className="mt-3 flex items-center gap-4 text-sm">
-                          <span className={`px-2 py-1 rounded-full ${
+                          <span className={`pill ${
                             vendor.risk_tier === 'Critical' ? 'bg-red-100 text-red-800' :
                             vendor.risk_tier === 'High' ? 'bg-orange-100 text-orange-800' :
                             vendor.risk_tier === 'Moderate' ? 'bg-yellow-100 text-yellow-800' :
@@ -257,11 +253,11 @@ const SingleVendorAuditWorkflow: React.FC = () => {
                           }`}>
                             {vendor.risk_tier} Risk
                           </span>
-                          <span className="text-gray-600">📍 {vendor.location || 'Location not specified'}</span>
+                          <span className="text-gray-600">{vendor.location || 'Location not specified'}</span>
                         </div>
                       </div>
                       {selectedVendor?.id === vendor.id && (
-                        <CheckCircle className="w-6 h-6 text-cyan-600 flex-shrink-0" />
+                        <CheckCircle className="w-6 h-6 text-rust flex-shrink-0" />
                       )}
                     </div>
                   </button>
@@ -275,12 +271,13 @@ const SingleVendorAuditWorkflow: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Upload Vendor Documents</h3>
+              <div className="overline mb-2">Step 02</div>
+              <h3 className="heading text-lg text-gray-900">Upload Vendor Documents</h3>
               <p className="text-sm text-gray-600 mt-1">Upload validation reports, quality manuals, SOPs, and compliance documentation</p>
             </div>
 
             {/* Upload Area */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-cyan-500 transition-colors">
+            <div className="border border-dashed border-hair rounded-sm bg-white p-8 text-center hover:border-rust transition-colors">
               <input
                 type="file"
                 id="file-upload"
@@ -301,9 +298,9 @@ const SingleVendorAuditWorkflow: React.FC = () => {
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Uploaded Documents ({uploadedDocs.length})</h4>
                 {uploadedDocs.map(doc => (
-                  <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div key={doc.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-sm border border-hair">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-cyan-600" />
+                      <FileText className="w-5 h-5 text-rust" strokeWidth={1.75} />
                       <div>
                         <p className="text-sm font-medium text-gray-900">{doc.name}</p>
                         <p className="text-xs text-gray-500">{(doc.size / 1024).toFixed(1)} KB</p>
@@ -321,12 +318,12 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             )}
 
             {/* Suggested Documents */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-white border border-hair rounded-sm p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-rust flex-shrink-0 mt-0.5" strokeWidth={1.75} />
                 <div>
-                  <h4 className="text-sm font-medium text-blue-900">Recommended Documents</h4>
-                  <ul className="text-sm text-blue-800 mt-2 space-y-1">
+                  <h4 className="overline mb-2">Recommended Documents</h4>
+                  <ul className="text-sm text-neutral-600 mt-2 space-y-1">
                     <li>• Validation Summary Reports</li>
                     <li>• Quality Management System Documentation</li>
                     <li>• Computer System Validation Protocols</li>
@@ -342,7 +339,8 @@ const SingleVendorAuditWorkflow: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Select GxP Compliance Standards</h3>
+              <div className="overline mb-2">Step 03</div>
+              <h3 className="heading text-lg text-gray-900">Select GxP Compliance Standards</h3>
               <p className="text-sm text-gray-600 mt-1">Choose which regulatory standards to validate against</p>
             </div>
 
@@ -351,9 +349,9 @@ const SingleVendorAuditWorkflow: React.FC = () => {
                 <button
                   key={standard.id}
                   onClick={() => toggleStandard(standard.id)}
-                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                  className={`p-4 border rounded-sm text-left transition-colors ${
                     selectedStandards.includes(standard.id)
-                      ? 'border-cyan-500 bg-cyan-50'
+                      ? 'border-rust bg-rust-tint'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                 >
@@ -361,7 +359,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckSquare className={`w-5 h-5 ${
-                          selectedStandards.includes(standard.id) ? 'text-cyan-600' : 'text-gray-400'
+                          selectedStandards.includes(standard.id) ? 'text-rust' : 'text-gray-400'
                         }`} />
                         <h4 className="font-semibold text-gray-900">{standard.name}</h4>
                       </div>
@@ -373,16 +371,16 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             </div>
 
             {/* Summary */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h4 className="font-medium text-gray-900 mb-2">Selection Summary</h4>
+            <div className="bg-neutral-50 rounded-sm p-4 border border-hair">
+              <h4 className="overline mb-2">Selection Summary</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Standards Selected:</span>
-                  <span className="ml-2 font-semibold text-cyan-600">{selectedStandards.length} / {GXP_STANDARDS.length}</span>
+                  <span className="ml-2 font-semibold text-rust">{selectedStandards.length} / {GXP_STANDARDS.length}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Approximate Rules:</span>
-                  <span className="ml-2 font-semibold text-cyan-600">~{selectedStandards.length * 12} rules</span>
+                  <span className="ml-2 font-semibold text-rust">~{selectedStandards.length * 12} rules</span>
                 </div>
               </div>
             </div>
@@ -393,24 +391,25 @@ const SingleVendorAuditWorkflow: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Review & Run Compliance Check</h3>
+              <div className="overline mb-2">Step 04</div>
+              <h3 className="heading text-lg text-gray-900">Review & Run Compliance Check</h3>
               <p className="text-sm text-gray-600 mt-1">Review your selections and execute the compliance validation</p>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Vendor Summary */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                <div className="text-blue-600 mb-2">🏭</div>
-                <h4 className="font-semibold text-gray-900">Vendor</h4>
+              <div className="bg-white rounded-sm p-4 border border-hair">
+                <Factory className="w-5 h-5 text-rust mb-3" strokeWidth={1.75} />
+                <h4 className="overline mb-2">Vendor</h4>
                 <p className="text-sm text-gray-700 mt-1">{selectedVendor?.vendor_name}</p>
                 <p className="text-xs text-gray-600">{selectedVendor?.vendor_type.replace(/_/g, ' ')}</p>
               </div>
 
               {/* Documents Summary */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                <div className="text-green-600 mb-2">📄</div>
-                <h4 className="font-semibold text-gray-900">Documents</h4>
+              <div className="bg-white rounded-sm p-4 border border-hair">
+                <FileText className="w-5 h-5 text-rust mb-3" strokeWidth={1.75} />
+                <h4 className="overline mb-2">Documents</h4>
                 <p className="text-sm text-gray-700 mt-1">{uploadedDocs.length} files uploaded</p>
                 <p className="text-xs text-gray-600">
                   {(uploadedDocs.reduce((sum, doc) => sum + doc.size, 0) / 1024).toFixed(1)} KB total
@@ -418,21 +417,21 @@ const SingleVendorAuditWorkflow: React.FC = () => {
               </div>
 
               {/* Standards Summary */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                <div className="text-purple-600 mb-2">📋</div>
-                <h4 className="font-semibold text-gray-900">Standards</h4>
+              <div className="bg-white rounded-sm p-4 border border-hair">
+                <CheckSquare className="w-5 h-5 text-rust mb-3" strokeWidth={1.75} />
+                <h4 className="overline mb-2">Standards</h4>
                 <p className="text-sm text-gray-700 mt-1">{selectedStandards.length} GxP standards</p>
                 <p className="text-xs text-gray-600">~{selectedStandards.length * 12} rules total</p>
               </div>
             </div>
 
             {/* Documents List */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Documents to Review</h4>
+            <div className="card p-4">
+              <h4 className="overline mb-3">Documents to Review</h4>
               <div className="space-y-2">
                 {uploadedDocs.map(doc => (
                   <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-700">
-                    <FileText className="w-4 h-4 text-cyan-600" />
+                    <FileText className="w-4 h-4 text-rust" strokeWidth={1.75} />
                     <span>{doc.name}</span>
                   </div>
                 ))}
@@ -440,13 +439,13 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             </div>
 
             {/* Standards List */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Selected Standards</h4>
+            <div className="card p-4">
+              <h4 className="overline mb-3">Selected Standards</h4>
               <div className="flex flex-wrap gap-2">
                 {selectedStandards.map(stdId => {
                   const std = GXP_STANDARDS.find(s => s.id === stdId);
                   return std ? (
-                    <span key={stdId} className={`px-3 py-1 rounded-full text-sm font-medium ${std.color}`}>
+                    <span key={stdId} className="pill border-hair text-neutral-700">
                       {std.name}
                     </span>
                   ) : null;
@@ -455,11 +454,11 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             </div>
 
             {/* Run Button */}
-            <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-6 text-center">
+            <div className="bg-white border border-hair rounded-sm p-6 text-center">
               <button
                 onClick={handleRunCheck}
                 disabled={isRunningCheck}
-                className="px-8 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium inline-flex items-center gap-2"
+                className="btn-primary px-8 py-3"
               >
                 {isRunningCheck ? (
                   <>
@@ -484,31 +483,28 @@ const SingleVendorAuditWorkflow: React.FC = () => {
         if (!complianceResults) {
           return (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+              <Loader2 className="w-8 h-8 text-rust animate-spin" />
             </div>
           );
         }
 
-        const statusColor = 
-          complianceResults.compliance_status === 'approved' ? 'green' :
-          complianceResults.compliance_status === 'conditional' ? 'yellow' :
-          complianceResults.compliance_status === 'rejected' ? 'red' : 'gray';
-
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Compliance Check Results</h3>
+              <div className="overline mb-2">Step 05</div>
+              <h3 className="heading text-lg text-gray-900">Compliance Check Results</h3>
               <p className="text-sm text-gray-600 mt-1">Review findings and manage corrective actions</p>
             </div>
 
             {/* Overall Status */}
-            <div className={`bg-gradient-to-br from-${statusColor}-50 to-${statusColor}-100 rounded-lg p-6 border-2 border-${statusColor}-200`}>
+            <div className="card p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-2xl font-bold text-gray-900">
+                  <div className="overline mb-2">Overall Status</div>
+                  <h4 className="heading text-2xl text-gray-900">
                     Compliance Score: {complianceResults.overall_score}%
                   </h4>
-                  <p className={`text-lg font-semibold text-${statusColor}-700 mt-1`}>
+                  <p className="text-lg font-semibold text-rust mt-1">
                     Status: {complianceResults.compliance_status.toUpperCase()}
                   </p>
                 </div>
@@ -525,36 +521,36 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             </div>
 
             {/* Findings Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                <div className="text-3xl font-bold text-red-600">{complianceResults.findings.critical}</div>
-                <div className="text-sm font-medium text-red-900 mt-1">Critical Findings</div>
-                <div className="text-xs text-red-700">Immediate action required</div>
+            <div className="grid grid-cols-1 md:grid-cols-4 border-l border-t border-hair bg-white">
+              <div className="p-4 border-r border-b border-hair">
+                <div className="heading text-3xl tracking-tighter leading-none num text-red-700">{complianceResults.findings.critical}</div>
+                <div className="overline mt-3">Critical Findings</div>
+                <div className="text-xs text-gray-600 mt-2">Immediate action required</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                <div className="text-3xl font-bold text-orange-600">{complianceResults.findings.major}</div>
-                <div className="text-sm font-medium text-orange-900 mt-1">Major Findings</div>
-                <div className="text-xs text-orange-700">Requires CAPA</div>
+              <div className="p-4 border-r border-b border-hair">
+                <div className="heading text-3xl tracking-tighter leading-none num text-orange-700">{complianceResults.findings.major}</div>
+                <div className="overline mt-3">Major Findings</div>
+                <div className="text-xs text-gray-600 mt-2">Requires CAPA</div>
               </div>
-              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <div className="text-3xl font-bold text-yellow-600">{complianceResults.findings.minor}</div>
-                <div className="text-sm font-medium text-yellow-900 mt-1">Minor Findings</div>
-                <div className="text-xs text-yellow-700">Recommendations</div>
+              <div className="p-4 border-r border-b border-hair">
+                <div className="heading text-3xl tracking-tighter leading-none num text-yellow-700">{complianceResults.findings.minor}</div>
+                <div className="overline mt-3">Minor Findings</div>
+                <div className="text-xs text-gray-600 mt-2">Recommendations</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div className="text-3xl font-bold text-blue-600">{complianceResults.findings.total}</div>
-                <div className="text-sm font-medium text-blue-900 mt-1">Total Findings</div>
-                <div className="text-xs text-blue-700">{complianceResults.rules_checked} rules checked</div>
+              <div className="p-4 border-r border-b border-hair">
+                <div className="heading text-3xl tracking-tighter leading-none num text-neutral-950">{complianceResults.findings.total}</div>
+                <div className="overline mt-3">Total Findings</div>
+                <div className="text-xs text-gray-600 mt-2">{complianceResults.rules_checked} rules checked</div>
               </div>
             </div>
 
             {/* Check Details */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Audit Details</h4>
+            <div className="card p-4">
+              <h4 className="overline mb-3">Audit Details</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Audit ID:</span>
-                  <span className="ml-2 font-mono text-cyan-600">{complianceResults.audit_id.substring(0, 8)}...</span>
+                  <span className="ml-2 mono text-rust">{complianceResults.audit_id.substring(0, 8)}...</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Vendor:</span>
@@ -572,25 +568,25 @@ const SingleVendorAuditWorkflow: React.FC = () => {
             </div>
 
             {/* Next Steps */}
-            <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
-              <h4 className="font-medium text-cyan-900 mb-2">Next Steps</h4>
-              <ul className="text-sm text-cyan-800 space-y-1">
-                <li>✓ Review all findings in detail</li>
-                <li>✓ Create CAPAs for critical and major findings</li>
-                <li>✓ Schedule follow-up audits as needed</li>
-                <li>✓ Update vendor risk assessment</li>
+            <div className="bg-white border border-hair rounded-sm p-4">
+              <h4 className="overline mb-2">Next Steps</h4>
+              <ul className="text-sm text-neutral-600 space-y-1">
+                <li>Review all findings in detail</li>
+                <li>Create CAPAs for critical and major findings</li>
+                <li>Schedule follow-up audits as needed</li>
+                <li>Update vendor risk assessment</li>
               </ul>
             </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3">
-              <button className="flex-1 px-4 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-medium">
+              <button className="btn-primary flex-1 py-3">
                 View Detailed Findings
               </button>
-              <button className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <button className="btn-secondary flex-1 py-3">
                 Create CAPA Plan
               </button>
-              <button className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+              <button className="btn-secondary px-4 py-3">
                 Export Report
               </button>
             </div>
@@ -605,16 +601,16 @@ const SingleVendorAuditWorkflow: React.FC = () => {
   return (
     <div className="p-6">
       {/* Progress Steps */}
-      <div className="mb-8">
+      <div className="card p-6 mb-8">
         <div className="flex items-center justify-between">
           {STEPS.map((step, index) => (
             <React.Fragment key={step.number}>
               <div className="flex flex-col items-center min-w-[120px]">
                 <div 
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  className={`flex items-center justify-center w-10 h-10 rounded-sm border ${
                     currentStep >= step.number
-                      ? 'bg-cyan-600 border-cyan-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-400'
+                      ? 'bg-rust border-rust text-white'
+                      : 'bg-white border-hair text-gray-400'
                   }`}
                 >
                   {currentStep > step.number ? (
@@ -624,13 +620,13 @@ const SingleVendorAuditWorkflow: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-2 text-center">
-                  <div className="text-sm font-medium text-gray-900">{step.title}</div>
+                  <div className="mono text-[11px] text-gray-900">{step.title}</div>
                   <div className="text-xs text-gray-500">{step.description}</div>
                 </div>
               </div>
               {index < STEPS.length - 1 && (
                 <div className={`flex-1 h-0.5 mx-4 ${
-                  currentStep > step.number ? 'bg-cyan-600' : 'bg-gray-300'
+                  currentStep > step.number ? 'bg-rust' : 'bg-hair'
                 }`} />
               )}
             </React.Fragment>
@@ -639,7 +635,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
       </div>
 
       {/* Step Content */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 min-h-[500px]">
+      <div className="card p-6 min-h-[500px]">
         {renderStepContent()}
       </div>
 
@@ -649,7 +645,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
           <button
             onClick={() => setCurrentStep(Math.max(1, currentStep - 1) as Step)}
             disabled={currentStep === 1}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="btn-secondary"
           >
             Previous
           </button>
@@ -665,7 +661,7 @@ const SingleVendorAuditWorkflow: React.FC = () => {
               setCurrentStep(Math.min(5, currentStep + 1) as Step);
             }}
             disabled={currentStep === 4 || !canProceedToNextStep()}
-            className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="btn-primary"
           >
             Next
           </button>
@@ -685,16 +681,16 @@ const SingleVendorAuditWorkflow: React.FC = () => {
               setComplianceResults(null);
               setCreatedAudit(null);
             }}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+            className="btn-secondary"
           >
             Start New Audit
           </button>
-          <div className="text-sm font-medium text-green-600">
-            ✓ Audit Completed
+          <div className="status-badge status-pass">
+            Audit Completed
           </div>
           <button
             onClick={() => window.print()}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+            className="btn-primary"
           >
             Print Report
           </button>

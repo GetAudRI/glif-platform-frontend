@@ -5,8 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowLeft, BarChart3, Factory, FileSearch, History, BookOpen, CheckSquare } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, BarChart3, Factory, FileSearch, History, BookOpen, CheckSquare, Target, Zap } from 'lucide-react';
 
 // Tab components
 import VendorManagementPage from './components/vendor/VendorManagementPage';
@@ -22,9 +21,7 @@ interface ModuleCard {
   id: ViewType;
   label: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  gradient: string;
-  textColor: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
 const MODULE_CARDS: ModuleCard[] = [
@@ -32,101 +29,92 @@ const MODULE_CARDS: ModuleCard[] = [
     id: 'dashboard',
     label: 'Portfolio Dashboard',
     description: 'Vendor risk overview and audit schedule',
-    icon: BarChart3,
-    gradient: 'from-blue-500 to-blue-600',
-    textColor: 'text-blue-600'
+    icon: BarChart3
   },
   {
     id: 'management',
     label: 'Vendor Management',
     description: 'Manage vendor profiles and details',
-    icon: Factory,
-    gradient: 'from-cyan-500 to-cyan-600',
-    textColor: 'text-cyan-600'
+    icon: Factory
   },
   {
     id: 'single-audit',
     label: 'Single Vendor Audit',
     description: 'Run compliance check for a vendor',
-    icon: FileSearch,
-    gradient: 'from-purple-500 to-purple-600',
-    textColor: 'text-purple-600'
+    icon: FileSearch
   },
   {
     id: 'audit-history',
     label: 'Audit History',
     description: 'View all completed audits and findings',
-    icon: History,
-    gradient: 'from-indigo-500 to-indigo-600',
-    textColor: 'text-indigo-600'
+    icon: History
   },
   {
     id: 'rules',
     label: 'GxP Rules Library',
     description: 'Browse FDA/EMA compliance rules',
-    icon: BookOpen,
-    gradient: 'from-emerald-500 to-emerald-600',
-    textColor: 'text-emerald-600'
+    icon: BookOpen
   },
   {
     id: 'capa',
     label: 'CAPA Tracking',
     description: 'Track corrective and preventive actions',
-    icon: CheckSquare,
-    gradient: 'from-orange-500 to-orange-600',
-    textColor: 'text-orange-600'
+    icon: CheckSquare
   }
 ];
 
 const VendorAudit: React.FC = () => {
-  const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ViewType>('home');
 
   const renderContent = () => {
     if (activeView === 'home') {
       return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="py-10">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <div className="text-6xl mb-4">🏭</div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">
-              AudRI Vendor Audit
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              GxP Compliance for Life Sciences - Automate vendor audits with AI-powered document review
-            </p>
+          <div className="mb-10 max-w-5xl">
+            <div className="overline mb-4">Vendor Compliance · GxP</div>
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+              <div>
+                <h1 className="heading text-4xl md:text-6xl tracking-tighter text-neutral-950">
+                  AudRI Vendor Audit
+                </h1>
+                <p className="text-base md:text-lg text-neutral-600 max-w-3xl mt-4 leading-relaxed">
+                  Automate life-sciences vendor audits with inspection-grade document review, risk scoring, and CAPA tracking.
+                </p>
+              </div>
+              <div className="hidden lg:flex items-center gap-2 border border-hair bg-white px-4 py-3 rounded-sm">
+                <Factory className="w-4 h-4 text-rust" strokeWidth={1.75} />
+                <span className="mono text-xs text-neutral-600">49 GxP rules ready</span>
+              </div>
+            </div>
           </div>
 
           {/* Module Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-l border-t border-hair bg-white mb-12">
             {MODULE_CARDS.map((card) => {
               const Icon = card.icon;
               return (
                 <button
                   key={card.id}
                   onClick={() => setActiveView(card.id)}
-                  className="group relative bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-transparent hover:-translate-y-1"
+                  className="group relative p-6 text-left border-r border-b border-hair hover:bg-neutral-50 transition-colors"
                 >
-                  {/* Gradient Header */}
-                  <div className={`h-32 bg-gradient-to-br ${card.gradient} p-6 flex items-center justify-center`}>
-                    <Icon className="w-16 h-16 text-white" strokeWidth={1.5} />
+                  <div className="flex items-start justify-between gap-4 mb-8">
+                    <div className="w-11 h-11 border border-hair rounded-sm flex items-center justify-center bg-white text-neutral-900">
+                      <Icon className="w-5 h-5" strokeWidth={1.75} />
+                    </div>
+                    <ArrowLeft className="w-4 h-4 text-neutral-400 rotate-180 transition-transform group-hover:translate-x-1" strokeWidth={1.75} />
                   </div>
 
                   {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gray-700">
+                  <div>
+                    <div className="overline mb-3">{card.id.replace(/-/g, ' ')}</div>
+                    <h3 className="heading text-2xl text-neutral-950 mb-3">
                       {card.label}
                     </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <p className="text-sm text-neutral-600 leading-relaxed">
                       {card.description}
                     </p>
-                  </div>
-
-                  {/* Hover Indicator */}
-                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                      <ArrowLeft className="w-4 h-4 text-gray-700 rotate-180" />
-                    </div>
                   </div>
                 </button>
               );
@@ -134,28 +122,29 @@ const VendorAudit: React.FC = () => {
           </div>
 
           {/* Info Section */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <div className="card p-8">
+            <div className="overline mb-3">Capability Map</div>
+            <h2 className="heading text-2xl text-gray-900 mb-6">
               Vendor Audit Features
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-4xl mb-3">🎯</div>
-                <h3 className="font-semibold text-gray-900 mb-2">49 GxP Rules</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 border-l border-t border-hair">
+              <div className="p-6 border-r border-b border-hair">
+                <Target className="w-6 h-6 text-rust mb-4" strokeWidth={1.75} />
+                <h3 className="heading text-lg text-gray-900 mb-2">49 GxP Rules</h3>
                 <p className="text-sm text-gray-600">
                   Comprehensive compliance checks across 4 regulatory standards
                 </p>
               </div>
-              <div className="text-center">
-                <div className="text-4xl mb-3">⚡</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Automated Audits</h3>
+              <div className="p-6 border-r border-b border-hair">
+                <Zap className="w-6 h-6 text-rust mb-4" strokeWidth={1.75} />
+                <h3 className="heading text-lg text-gray-900 mb-2">Automated Audits</h3>
                 <p className="text-sm text-gray-600">
                   Complete vendor audits in minutes, not weeks
                 </p>
               </div>
-              <div className="text-center">
-                <div className="text-4xl mb-3">📊</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Portfolio View</h3>
+              <div className="p-6 border-r border-b border-hair">
+                <BarChart3 className="w-6 h-6 text-rust mb-4" strokeWidth={1.75} />
+                <h3 className="heading text-lg text-gray-900 mb-2">Portfolio View</h3>
                 <p className="text-sm text-gray-600">
                   Manage risk across your entire vendor portfolio
                 </p>
@@ -186,28 +175,29 @@ const VendorAudit: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col overflow-hidden bg-page">
       {/* Page Header */}
-      <div className="bg-white border-b border-neutral-200 px-8 py-6 flex-shrink-0">
+      <div className="bg-white border-b border-hair px-8 py-6 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Back Button for sub-views */}
             {activeView !== 'home' && (
               <button
                 onClick={() => setActiveView('home')}
-                className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+                className="btn-secondary px-3"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
               </button>
             )}
             <div>
-              <h1 className="text-2xl font-semibold text-neutral-900">
+              <div className="overline mb-2">AudRI Compliance</div>
+              <h1 className="heading text-3xl text-neutral-950">
                 {activeView === 'home' 
                   ? 'Vendor Audit'
                   : MODULE_CARDS.find(m => m.id === activeView)?.label || 'Vendor Audit'
                 }
               </h1>
-              <p className="text-sm text-neutral-600 mt-1">
+              <p className="text-sm text-neutral-600 mt-2">
                 GxP Compliance for Life Sciences
               </p>
             </div>

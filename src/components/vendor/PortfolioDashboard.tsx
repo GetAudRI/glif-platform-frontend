@@ -24,10 +24,10 @@ const MOCK_METRICS = {
 };
 
 const MOCK_RISK_DISTRIBUTION = [
-  { risk: 'Critical', count: 3, color: 'bg-red-500' },
-  { risk: 'High', count: 4, color: 'bg-orange-500' },
-  { risk: 'Moderate', count: 3, color: 'bg-yellow-500' },
-  { risk: 'Low', count: 2, color: 'bg-green-500' }
+  { risk: 'Critical', count: 3, color: 'bg-red-600' },
+  { risk: 'High', count: 4, color: 'bg-orange-600' },
+  { risk: 'Moderate', count: 3, color: 'bg-yellow-600' },
+  { risk: 'Low', count: 2, color: 'bg-green-600' }
 ];
 
 const MOCK_VENDORS = [
@@ -56,21 +56,29 @@ const PortfolioDashboard: React.FC = () => {
 
   const maxCount = Math.max(...MOCK_RISK_DISTRIBUTION.map(r => r.count));
 
+  const getRiskClass = (risk: string) => {
+    if (risk === 'Critical') return 'sev-critical';
+    if (risk === 'High') return 'sev-major';
+    if (risk === 'Moderate') return 'sev-minor';
+    return 'sev-observation';
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Portfolio Dashboard</h2>
+        <div className="overline mb-2">Portfolio Risk</div>
+        <h2 className="heading text-2xl text-gray-900 mb-2">Portfolio Dashboard</h2>
         <p className="text-gray-600">Overview of vendor risk, compliance, and audit schedule</p>
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-white border border-hair rounded-sm p-4">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rust flex-shrink-0 mt-0.5" strokeWidth={1.75} />
           <div>
-            <h4 className="text-sm font-semibold text-blue-900">Demo Mode</h4>
-            <p className="text-sm text-blue-800 mt-1">
+            <h4 className="overline mb-1">Demo Mode</h4>
+            <p className="text-sm text-neutral-600">
               This dashboard shows mock data for demonstration purposes. In production, all metrics would be calculated from your actual vendor portfolio and audit history.
             </p>
           </div>
@@ -78,62 +86,62 @@ const PortfolioDashboard: React.FC = () => {
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 border-l border-t border-hair bg-white">
         {/* Total Vendors */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+        <div className="p-6 border-r border-b border-hair">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">Total Vendors</p>
-              <p className="text-3xl font-bold text-blue-600">{MOCK_METRICS.totalVendors}</p>
+              <p className="overline mb-3">Total Vendors</p>
+              <p className="heading text-4xl tracking-tighter leading-none num text-neutral-950">{MOCK_METRICS.totalVendors}</p>
             </div>
-            <Factory className="w-8 h-8 text-blue-500" />
+            <Factory className="w-6 h-6 text-rust" strokeWidth={1.75} />
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-blue-700">
+          <div className="mt-4 flex items-center gap-1 text-sm text-neutral-600">
             <TrendingUp className="w-4 h-4" />
             <span>+2 this quarter</span>
           </div>
         </div>
 
         {/* Avg Compliance Score */}
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
+        <div className="p-6 border-r border-b border-hair">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-green-900 mb-1">Avg Compliance</p>
-              <p className="text-3xl font-bold text-green-600">{MOCK_METRICS.avgComplianceScore}%</p>
+              <p className="overline mb-3">Avg Compliance</p>
+              <p className="heading text-4xl tracking-tighter leading-none num text-green-700">{MOCK_METRICS.avgComplianceScore}%</p>
             </div>
-            <Shield className="w-8 h-8 text-green-500" />
+            <Shield className="w-6 h-6 text-rust" strokeWidth={1.75} />
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-green-700">
+          <div className="mt-4 flex items-center gap-1 text-sm text-neutral-600">
             <TrendingUp className="w-4 h-4" />
             <span>+3% from last month</span>
           </div>
         </div>
 
         {/* Audits This Month */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
+        <div className="p-6 border-r border-b border-hair">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-purple-900 mb-1">Audits This Month</p>
-              <p className="text-3xl font-bold text-purple-600">{MOCK_METRICS.auditsThisMonth}</p>
+              <p className="overline mb-3">Audits This Month</p>
+              <p className="heading text-4xl tracking-tighter leading-none num text-neutral-950">{MOCK_METRICS.auditsThisMonth}</p>
             </div>
-            <FileText className="w-8 h-8 text-purple-500" />
+            <FileText className="w-6 h-6 text-rust" strokeWidth={1.75} />
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-purple-700">
+          <div className="mt-4 flex items-center gap-1 text-sm text-neutral-600">
             <Calendar className="w-4 h-4" />
             <span>6 completed, 2 in progress</span>
           </div>
         </div>
 
         {/* Overdue Audits */}
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 border border-red-200">
+        <div className="p-6 border-r border-b border-hair">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-red-900 mb-1">Overdue Audits</p>
-              <p className="text-3xl font-bold text-red-600">{MOCK_METRICS.overdueAudits}</p>
+              <p className="overline mb-3">Overdue Audits</p>
+              <p className="heading text-4xl tracking-tighter leading-none num text-red-700">{MOCK_METRICS.overdueAudits}</p>
             </div>
-            <AlertCircle className="w-8 h-8 text-red-500" />
+            <AlertCircle className="w-6 h-6 text-rust" strokeWidth={1.75} />
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-red-700">
+          <div className="mt-4 flex items-center gap-1 text-sm text-neutral-600">
             <Clock className="w-4 h-4" />
             <span>Requires immediate action</span>
           </div>
@@ -141,16 +149,16 @@ const PortfolioDashboard: React.FC = () => {
       </div>
 
       {/* Risk Distribution Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="card p-6">
         <div className="flex items-center gap-2 mb-6">
-          <BarChart3 className="w-5 h-5 text-cyan-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Vendor Risk Distribution</h3>
+          <BarChart3 className="w-5 h-5 text-rust" strokeWidth={1.75} />
+          <h3 className="heading text-lg text-gray-900">Vendor Risk Distribution</h3>
         </div>
         <div className="space-y-4">
           {MOCK_RISK_DISTRIBUTION.map((item) => (
             <div key={item.risk} className="flex items-center gap-4">
               <div className="w-24 text-sm font-medium text-gray-700">{item.risk}</div>
-              <div className="flex-1 h-10 bg-gray-100 rounded-lg overflow-hidden relative">
+              <div className="flex-1 h-8 bg-neutral-100 rounded-sm overflow-hidden relative border border-hair">
                 <div
                   className={`h-full ${item.color} transition-all duration-500 flex items-center justify-end px-3`}
                   style={{ width: `${(item.count / maxCount) * 100}%` }}
@@ -167,19 +175,19 @@ const PortfolioDashboard: React.FC = () => {
       {/* Vendor Risk Heatmap & Upcoming Audits */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Vendor Risk Heatmap */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Vendor Risk Heatmap</h3>
+        <div className="card p-6">
+          <h3 className="heading text-lg text-gray-900 mb-4">Vendor Risk Heatmap</h3>
           <div className="space-y-3">
             {MOCK_VENDORS.map((vendor) => (
               <div
                 key={vendor.id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-cyan-500 hover:shadow-md transition-all cursor-pointer"
+                className="p-4 border border-hair rounded-sm hover:bg-neutral-50 transition-colors cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900">{vendor.name}</h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${vendor.riskColor}`}>
+                      <span className={`pill ${getRiskClass(vendor.risk)}`}>
                         {vendor.risk} Risk
                       </span>
                       <span className={`text-sm font-semibold ${getScoreColor(vendor.score)}`}>
@@ -198,13 +206,13 @@ const PortfolioDashboard: React.FC = () => {
         </div>
 
         {/* Upcoming Audits */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Audits</h3>
+        <div className="card p-6">
+          <h3 className="heading text-lg text-gray-900 mb-4">Upcoming Audits</h3>
           <div className="space-y-3">
             {MOCK_UPCOMING_AUDITS.map((audit) => (
               <div
                 key={audit.id}
-                className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg hover:shadow-md transition-all cursor-pointer"
+                className="p-4 border border-hair bg-white rounded-sm hover:bg-neutral-50 transition-colors cursor-pointer"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -214,19 +222,19 @@ const PortfolioDashboard: React.FC = () => {
                         <Calendar className="w-4 h-4" />
                         {new Date(audit.dueDate).toLocaleDateString()}
                       </span>
-                      <span className="text-blue-600 font-medium">
+                      <span className="text-rust font-medium">
                         {audit.daysUntil} days
                       </span>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium border ${audit.riskColor}`}>
+                  <span className={`pill ${getRiskClass(audit.risk)}`}>
                     {audit.risk}
                   </span>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-hair">
             <p className="text-sm text-gray-600 text-center">
               {MOCK_UPCOMING_AUDITS.length} audits scheduled in next 120 days
             </p>

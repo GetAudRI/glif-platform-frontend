@@ -1,11 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FileSearch, BarChart3, DollarSign, BookOpen, Database,
-  Settings, LogOut, FileText, Shield,
+  Settings, LogOut, Shield,
   ClipboardCheck, TrendingUp, GitBranch, CheckCircle2,
   FileCheck, Receipt, FileSignature, Building2, ShieldCheck
 } from 'lucide-react';
-import { isAuthenticated, getUsername, clearAuth } from '../utils/auth';
+import { getUsername, clearAuth } from '../utils/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,7 +54,10 @@ export default function Layout({ children }: LayoutProps) {
   const username = getUsername() || 'User';
   const initials = username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-  const isActive = (route: string) => location.pathname === route;
+  const isActive = (route: string) => {
+    const currentRoute = `${location.pathname}${location.search}`;
+    return route.includes('?') ? currentRoute === route : location.pathname === route;
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -69,153 +72,76 @@ export default function Layout({ children }: LayoutProps) {
     configuration: navItems.filter(item => item.section === 'configuration'),
   };
 
+  const renderNavGroup = (label: string, items: NavItem[]) => {
+    if (items.length === 0) return null;
+
+    return (
+      <div className="mb-6">
+        <div className="px-3 mb-2">
+          <span className="overline text-[10px]">{label}</span>
+        </div>
+        {items.map(item => {
+          const active = isActive(item.route);
+          return (
+            <button
+              key={item.id}
+              onClick={() => navigate(item.route)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-sm mb-1 border-l-2 transition-colors ${
+                active
+                  ? 'border-rust bg-neutral-50 text-neutral-950'
+                  : 'border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950'
+              }`}
+            >
+              <item.icon className="w-[15px] h-[15px]" strokeWidth={1.75} />
+              <span className="truncate">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-page overflow-hidden">
       {/* Static Sidebar - Fixed position, always visible */}
-      <aside className="w-64 bg-slate-100 border-r border-slate-200 flex flex-col flex-shrink-0">
+      <aside className="w-64 bg-white border-r border-hair flex flex-col flex-shrink-0">
         {/* Logo - Fixed at top */}
-        <div className="px-6 py-5 border-b border-slate-200 flex-shrink-0">
+        <div className="px-6 py-5 border-b border-hair flex-shrink-0">
           <button 
             onClick={() => navigate('/')}
             className="text-left w-full hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-xl font-semibold text-neutral-900">AudRI Platform</h1>
-            <p className="text-xs text-neutral-500 mt-1">Enterprise Oversight</p>
+            <div className="overline mb-2">Audri - Claims</div>
+            <h1 className="heading text-xl text-neutral-950">AudRI</h1>
+            <p className="mono text-xs text-neutral-500 mt-1">The Audit Platform</p>
           </button>
         </div>
 
         {/* Navigation - Scrollable if needed */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          {/* Modules Section */}
-          <div className="mb-6">
-            <div className="px-3 mb-2">
-              <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Modules</span>
-            </div>
-            {groupedItems.modules.map(item => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.route)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                  isActive(item.route)
-                    ? 'text-white bg-primary-600 shadow-sm'
-                    : 'text-slate-700 hover:bg-white hover:shadow-sm'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Audit Tools Section */}
-          {groupedItems.auditTools.length > 0 && (
-            <div className="mb-6">
-              <div className="px-3 mb-2">
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Audit Tools</span>
-              </div>
-              {groupedItems.auditTools.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.route)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                    location.pathname + location.search === item.route
-                      ? 'text-white bg-primary-600'
-                      : 'text-slate-700 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Trend Analytics Engine Section */}
-          {groupedItems.trendAnalytics.length > 0 && (
-            <div className="mb-6">
-              <div className="px-3 mb-2">
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Trend Analytics Engine</span>
-              </div>
-              {groupedItems.trendAnalytics.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.route)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                    location.pathname + location.search === item.route
-                      ? 'text-white bg-primary-600'
-                      : 'text-slate-700 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Testing and Cost Section */}
-          {groupedItems.testingCost.length > 0 && (
-            <div className="mb-6">
-              <div className="px-3 mb-2">
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Testing and Cost</span>
-              </div>
-              {groupedItems.testingCost.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.route)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                    location.pathname + location.search === item.route
-                      ? 'text-white bg-primary-600'
-                      : 'text-slate-700 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Configuration Section */}
-          {groupedItems.configuration.length > 0 && (
-            <div>
-              <div className="px-3 mb-2">
-                <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Configuration</span>
-              </div>
-              {groupedItems.configuration.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.route)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                    location.pathname + location.search === item.route
-                      ? 'text-white bg-primary-600'
-                      : 'text-slate-700 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {renderNavGroup('Modules', groupedItems.modules)}
+          {renderNavGroup('Audit Tools', groupedItems.auditTools)}
+          {renderNavGroup('Trend Analytics', groupedItems.trendAnalytics)}
+          {renderNavGroup('Testing Cost', groupedItems.testingCost)}
+          {renderNavGroup('Configuration', groupedItems.configuration)}
         </nav>
 
         {/* User Profile - Fixed at bottom */}
-        <div className="px-3 py-4 border-t border-slate-200 flex-shrink-0">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white hover:shadow-sm cursor-pointer group transition-all">
-            <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-medium text-primary-600">{initials}</span>
+        <div className="px-3 py-4 border-t border-hair flex-shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-sm hover:bg-neutral-50 cursor-pointer group transition-colors">
+            <div className="w-9 h-9 bg-rust-tint border border-rust-tint-bd rounded-sm flex items-center justify-center flex-shrink-0">
+              <span className="mono text-sm font-medium text-rust-deep">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-neutral-900 truncate">{username}</div>
-              <div className="text-xs text-neutral-500 truncate">Auditor</div>
+              <div className="mono text-xs text-neutral-500 truncate">Auditor</div>
             </div>
             <button
               onClick={handleLogout}
               className="opacity-0 group-hover:opacity-100 transition-opacity"
               title="Logout"
             >
-              <LogOut className="w-4 h-4 text-neutral-400" />
+              <LogOut className="w-4 h-4 text-neutral-400" strokeWidth={1.75} />
             </button>
           </div>
         </div>

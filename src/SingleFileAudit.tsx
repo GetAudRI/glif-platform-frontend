@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus, Search, Clock, DollarSign, HardDrive } from 'lucide-react';
 import { 
   listDocuments, 
@@ -11,10 +12,12 @@ import {
   listSchemas
 } from './services/api';
 import NarrativeValidationResults from './components/NarrativeValidationResults';
+import { summarizeRuleChecks, rulePassRateSubtitle } from './utils/validationScoring';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
 export default function SingleFileAudit() {
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
 
   // Policy Declaration Selection State
@@ -110,8 +113,11 @@ export default function SingleFileAudit() {
   //   { number: 6, label: 'Results', icon: '📊' }
   // ];
 
-  // Load available schemas on mount
+  // Load available schemas on mount (honor ?sopSchema= & ?claimSchema= from TestD deep link)
   useEffect(() => {
+    const sopFromUrl = searchParams.get('sopSchema');
+    const claimFromUrl = searchParams.get('claimSchema');
+
     // Fetch policy schemas - now returns actual filenames
     listSchemas('policy')
       .then(data => {
@@ -130,8 +136,9 @@ export default function SingleFileAudit() {
       .then(data => {
         if (data.success && data.schema_files) {
           setAvailableClaimSchemas(data.schema_files);
-          // Set first schema as default if available
-          if (data.schema_files.length > 0) {
+          if (claimFromUrl && data.schema_files.includes(claimFromUrl)) {
+            setClaimSchemaVersion(claimFromUrl);
+          } else if (data.schema_files.length > 0) {
             setClaimSchemaVersion(data.schema_files[0]);
           }
         }
@@ -143,14 +150,16 @@ export default function SingleFileAudit() {
       .then(data => {
         if (data.success && data.schema_files) {
           setAvailableSopSchemas(data.schema_files);
-          // Set first schema as default if available
-          if (data.schema_files.length > 0) {
+          if (sopFromUrl && data.schema_files.includes(sopFromUrl)) {
+            setSopSchemaVersion(sopFromUrl);
+            setSopMode('upload');
+          } else if (data.schema_files.length > 0) {
             setSopSchemaVersion(data.schema_files[0]);
           }
         }
       })
       .catch(error => console.error('Error loading SOP schemas:', error));
-  }, []);
+  }, [searchParams]);
 
   // Load existing policy declarations, playbooks, checkposts, and claims on mount
   useEffect(() => {
@@ -607,15 +616,16 @@ export default function SingleFileAudit() {
         playbook_name: data.playbook_name || selectedPlaybookName || sopFile?.name,
         document_name: data.document_name || claimFile?.name,
         total_rules: data.total_rules,
+        rules_in_sop: data.rules_in_sop ?? data.total_rules,
+        rules_validated_target: data.rules_validated_target,
+        use_fast_validation: data.use_fast_validation ?? useFastValidation,
         checkposts_count: data.checkposts_count,
         message: data.message,
-        // Include validation results - use backend value if available, otherwise calculate from rule checks
         is_valid: data.is_valid !== undefined ? data.is_valid : calculatedIsValid,
         claim_id: data.claim_id,
         rule_checks: data.rule_checks || [],
         errors: data.errors || [],
         warnings: data.warnings || [],
-        // Include cost and AI metadata
         total_cost: data.total_cost || 0,
         playbook_cost: data.playbook_cost || 0,
         document_cost: data.document_cost || 0,
@@ -624,7 +634,15 @@ export default function SingleFileAudit() {
         input_tokens: data.input_tokens || 0,
         output_tokens: data.output_tokens || 0,
         ai_model: data.ai_model || 'claude-3.5-sonnet',
-        confidence_score: data.confidence_score || 85,
+        rule_pass_rate: data.rule_pass_rate ?? data.compliance_score ?? data.confidence_score,
+        compliance_score: data.compliance_score ?? data.rule_pass_rate ?? data.confidence_score,
+        confidence_score: data.confidence_score ?? data.rule_pass_rate ?? data.compliance_score,
+        rules_evaluated: data.rules_evaluated,
+        rules_scored: data.rules_scored,
+        rules_passed: data.rules_passed,
+        rules_failed: data.rules_failed,
+        rules_warned: data.rules_warned,
+        rules_na: data.rules_na,
         validation_timestamp: data.validation_timestamp
       });
 
@@ -1387,9 +1405,14 @@ export default function SingleFileAudit() {
                 <h4 className="font-semibold text-gray-900 mb-1">Validation Mode</h4>
                 <p className="text-sm text-gray-600">
                   {useFastValidation
-                    ? '⚡ Fast Validation: Using critical rules (15 top rules) for quick results (~5-10 seconds)'
-                    : '🔍 Full Validation: Using all rules for comprehensive validation (~30-40 seconds)'}
+                    ? '⚡ Fast: validates ~15 critical rules from the SOP (quick demo, lower AI cost)'
+                    : '🔍 Full: validates all extracted SOP rules (~95 for large SOPs — slower, higher AI cost)'}
                 </p>
+                {!useFastValidation && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Full mode re-runs validation (not cached from a prior fast run).
+                  </p>
+                )}
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -1466,15 +1489,29 @@ export default function SingleFileAudit() {
           );
         }
         
-        const baseRules = ruleChecks.length;
-        const passedCount = ruleChecks.filter((c: any) => c.status === 'PASS').length;
-        const failedCount = ruleChecks.filter((c: any) => c.status === 'FAIL').length;
-        const warningCount = ruleChecks.filter((c: any) => c.status === 'WARNING').length;
-        const complianceScore = results.compliance_score !== undefined
-          ? results.compliance_score
-          : baseRules
-            ? Math.round((passedCount / baseRules) * 100)
-            : 0;
+        const scoreSummary = summarizeRuleChecks(ruleChecks);
+        const passRate = results.rule_pass_rate ?? results.compliance_score ?? scoreSummary.rule_pass_rate;
+        const passedCount = results.rules_passed ?? scoreSummary.rules_passed;
+        const failedCount = results.rules_failed ?? scoreSummary.rules_failed;
+        const warningCount = results.rules_warned ?? scoreSummary.rules_warned;
+        const naCount = results.rules_na ?? scoreSummary.rules_na;
+        const evaluatedCount = results.rules_evaluated ?? scoreSummary.rules_evaluated;
+        const scoredCount = results.rules_scored ?? scoreSummary.rules_scored;
+        const validationModeLabel = results.use_fast_validation === false ? 'Full SOP' : 'Fast (critical rules)';
+        const rulesInSop = results.rules_in_sop ?? results.total_rules;
+        const passRateSubtitle = rulePassRateSubtitle({
+          ...scoreSummary,
+          rules_passed: passedCount,
+          rules_failed: failedCount,
+          rules_warned: warningCount,
+          rules_na: naCount,
+          rules_scored: scoredCount,
+          rule_pass_rate: passRate,
+          compliance_score: passRate,
+          confidence_score: passRate,
+          rules_evaluated: evaluatedCount,
+          rules_other: scoreSummary.rules_other,
+        });
 
         const formatCurrency = (val: number) => `$${(val || 0).toFixed(4)}`;
         const formatDate = (val: any) => val ? new Date(val).toLocaleString() : new Date().toLocaleString();
@@ -1549,7 +1586,7 @@ export default function SingleFileAudit() {
 
         // Total rules that were actually validated (exclude N/A)
         const appliedRules = combinedRules.filter((r: any) => r.status !== 'N/A');
-        const totalRules = appliedRules.length || combinedRules.length || baseRules;
+        const totalRules = appliedRules.length || combinedRules.length || evaluatedCount;
 
         const getCategoryStats = (cat: string) => {
           const items = combinedRules.filter((c: any) => categorizeRule(c) === cat);
@@ -1611,8 +1648,15 @@ export default function SingleFileAudit() {
                 </div>
                 <div className="text-right">
                   <div className="flex flex-col items-end gap-1">
-                    <div className="text-4xl font-bold">{complianceScore}%</div>
-                    <div className="text-blue-100 text-xs">Compliance Score</div>
+                    <div className="text-4xl font-bold">{passRate}%</div>
+                    <div className="text-blue-100 text-xs">Rule Pass Rate</div>
+                    <div className="text-blue-100/90 text-[11px] max-w-[220px] text-right leading-snug">
+                      {passRateSubtitle}
+                    </div>
+                    <div className="text-blue-100/80 text-[10px]">
+                      {validationModeLabel}
+                      {rulesInSop ? ` · ${rulesInSop} rules in SOP` : ''}
+                    </div>
                     <button
                       onClick={() => setShowAuditDetailsModal(true)}
                       className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-colors border border-white/30"
@@ -1623,10 +1667,10 @@ export default function SingleFileAudit() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                  <div className="text-xl font-bold">{totalRules}</div>
-                  <div className="text-blue-100 text-xs">Total Rules</div>
+                  <div className="text-xl font-bold">{evaluatedCount}</div>
+                  <div className="text-blue-100 text-xs">Evaluated</div>
                 </div>
                 <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
                   <div className="text-xl font-bold text-green-300">{passedCount}</div>
@@ -1640,7 +1684,14 @@ export default function SingleFileAudit() {
                   <div className="text-xl font-bold text-yellow-300">{warningCount}</div>
                   <div className="text-blue-100 text-xs">Warnings</div>
                 </div>
+                <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  <div className="text-xl font-bold text-blue-200">{naCount}</div>
+                  <div className="text-blue-100 text-xs">N/A</div>
+                </div>
               </div>
+              <p className="mt-2 text-[11px] text-blue-100/90 text-center">
+                Pass rate = passed ÷ (passed + failed + warnings). N/A rules are listed but not scored.
+              </p>
             </div>
 
             <div className="grid grid-cols-[320px_1fr] gap-6">
@@ -1718,11 +1769,11 @@ export default function SingleFileAudit() {
                   <div className="p-4 space-y-3">
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-600">Confidence</span>
-                        <span className="text-sm font-semibold text-gray-900">{complianceScore}%</span>
+                        <span className="text-xs text-gray-600">Rule pass rate</span>
+                        <span className="text-sm font-semibold text-gray-900">{passRate}%</span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600" style={{ width: `${Math.min(complianceScore, 100)}%` }}></div>
+                        <div className="h-full bg-blue-600" style={{ width: `${Math.min(passRate, 100)}%` }}></div>
                       </div>
                     </div>
                     <div className="pt-2 border-t border-gray-100 space-y-2 text-xs">
@@ -2195,7 +2246,7 @@ export default function SingleFileAudit() {
                   >
                     {results.is_valid ? 'APPROVED' : 'REJECTED'}
                   </span>
-                  <span className="text-sm text-gray-700 font-semibold">{complianceScore}% Score</span>
+                  <span className="text-sm text-gray-700 font-semibold">{passRate}% pass rate</span>
                 </div>
               </div>
             </div>

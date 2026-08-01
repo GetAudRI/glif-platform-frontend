@@ -8,9 +8,14 @@ export default function TestD() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-lg shadow-lg">
         <h1 className="text-2xl font-bold mb-2">🧪 TestD - Demo Data Generation</h1>
-        <p className="text-purple-100">
-          Create perfect demo data with matching schemas for SOPs and Claims
+        <p className="text-purple-100 mb-3">
+          One <strong>SOP slug</strong> links every file: SOP upload → schemas → demo claims → audit.
         </p>
+        <div className="text-xs font-mono text-purple-100 bg-white/10 rounded p-3 space-y-1">
+          <p>sop_<span className="text-white">{'{slug}'}</span>_v1.0.json</p>
+          <p>claim_<span className="text-white">{'{slug}'}</span>_v1.0.json</p>
+          <p>uploads/demo_claims/<span className="text-white">{'{slug}'}</span>/{'<slug>_compliant_…'}.txt</p>
+        </div>
       </div>
 
       {/* Section 1: Schema Pair Generator */}

@@ -1229,25 +1229,40 @@ export async function generateClaimsFromSchema(
 }
 
 /**
- * Generate matching SOP and Claim schemas from SOP text
+ * Generate matching SOP and Claim schemas from SOP text or uploaded file
  */
 export async function generateSchemaPair(
-  sopText: string,
+  sopTextOrFile: string | File,
   schemaName: string,
   schemaVersion: string = '1.0'
 ) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sop_text: sopText,
-        schema_name: schemaName,
-        schema_version: schemaVersion
-      })
-    });
+    let response: Response;
+
+    if (sopTextOrFile instanceof File) {
+      const formData = new FormData();
+      formData.append('file', sopTextOrFile);
+      formData.append('schema_name', schemaName);
+      formData.append('schema_version', schemaVersion);
+      formData.append('filename', sopTextOrFile.name);
+
+      response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
+        method: 'POST',
+        body: formData,
+      });
+    } else {
+      response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sop_text: sopTextOrFile,
+          schema_name: schemaName,
+          schema_version: schemaVersion,
+        }),
+      });
+    }
 
     const data = await response.json();
     

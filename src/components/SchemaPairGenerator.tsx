@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { FileText, Download, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, Download, CheckCircle2, Clock, AlertCircle, ArrowRight } from 'lucide-react';
 import { generateSchemaPair } from '../services/api';
 import FieldMappingVisualization from './FieldMappingVisualization';
+import SopNamingPreview from './SopNamingPreview';
+import { bundleFromSchemaPairResult, saveSopBundle, slugifySopName } from '../utils/sopNaming';
 
 export default function SchemaPairGenerator() {
   const [sopText, setSopText] = useState('');
@@ -17,28 +20,35 @@ export default function SchemaPairGenerator() {
     if (!file) return;
 
     setSopFile(file);
-    
-    // Read file content
+    setError('');
+
+    const baseName = slugifySopName(file.name);
+    setSchemaName(baseName);
+
+    // For text files, preview content in the textarea. PDFs are sent to the backend for extraction.
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      setSopText('');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
       setSopText(content);
-      
-      // Auto-generate schema name from filename
-      const baseName = file.name.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-      setSchemaName(baseName);
     };
     reader.readAsText(file);
   };
 
   const handleGenerate = async () => {
-    if (!sopText || sopText.trim().length < 100) {
+    const hasUploadedPdf = sopFile?.name.toLowerCase().endsWith('.pdf');
+
+    if (!hasUploadedPdf && (!sopText || sopText.trim().length < 100)) {
       setError('Please upload or paste an SOP (at least 100 characters)');
       return;
     }
 
     if (!schemaName || schemaName.trim().length < 2) {
-      setError('Please provide a schema name (e.g., "auto_rentals")');
+      setError('Please provide an SOP slug (e.g., "statefarm_wildfire_mce")');
       return;
     }
 
@@ -47,8 +57,11 @@ export default function SchemaPairGenerator() {
     setResult(null);
 
     try {
-      const data = await generateSchemaPair(sopText, schemaName, schemaVersion);
+      const input = hasUploadedPdf && sopFile ? sopFile : sopText;
+      const data = await generateSchemaPair(input, schemaName, schemaVersion);
       setResult(data);
+      const bundle = bundleFromSchemaPairResult(data, schemaVersion, sopFile?.name);
+      saveSopBundle(bundle);
     } catch (err: any) {
       setError(err.message || 'Failed to generate schema pair');
     } finally {
@@ -83,31 +96,34 @@ export default function SchemaPairGenerator() {
           <textarea
             value={sopText}
             onChange={(e) => setSopText(e.target.value)}
-            placeholder="Paste your SOP text here, or upload a file above..."
+            placeholder={
+              sopFile?.name.toLowerCase().endsWith('.pdf')
+                ? `PDF selected: ${sopFile.name} (text will be extracted on the server)`
+                : 'Paste your SOP text here, or upload a file above...'
+            }
             rows={8}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
-            disabled={generating}
+            disabled={generating || sopFile?.name.toLowerCase().endsWith('.pdf')}
           />
           <p className="text-xs text-gray-500 mt-1">
-            {sopText.length} characters (minimum 100 required)
+            {sopFile?.name.toLowerCase().endsWith('.pdf')
+              ? `PDF ready: ${sopFile.name}`
+              : `${sopText.length} characters (minimum 100 required)`}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Schema Name (e.g., "auto_rentals")
+            SOP slug <span className="text-gray-400 font-normal">(shared by all files)</span>
           </label>
           <input
             type="text"
             value={schemaName}
-            onChange={(e) => setSchemaName(e.target.value)}
-            placeholder="auto_rentals"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            onChange={(e) => setSchemaName(slugifySopName(e.target.value))}
+            placeholder="statefarm_wildfire_mce"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
             disabled={generating}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Will generate: sop_{schemaName}_v{schemaVersion}.json
-          </p>
         </div>
 
         <div>
@@ -125,10 +141,22 @@ export default function SchemaPairGenerator() {
         </div>
       </div>
 
+      {schemaName && (
+        <SopNamingPreview
+          slug={schemaName}
+          version={schemaVersion}
+          sopSourceFile={sopFile?.name}
+        />
+      )}
+
       {/* Generate Button */}
       <button
         onClick={handleGenerate}
-        disabled={generating || sopText.length < 100 || !schemaName}
+        disabled={
+          generating ||
+          !schemaName ||
+          (!sopFile?.name.toLowerCase().endsWith('.pdf') && sopText.length < 100)
+        }
         className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {generating ? (
@@ -163,7 +191,7 @@ export default function SchemaPairGenerator() {
               <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="font-semibold text-green-900 mb-2">
-                  ✅ Successfully generated schema pair!
+                  ✅ Schema pair created for slug <code className="bg-green-100 px-1 rounded">{result.sop_slug || slugifySopName(schemaName)}</code>
                 </p>
                 <div className="grid md:grid-cols-2 gap-3">
                   <div className="bg-white p-3 rounded border border-green-200">
@@ -213,16 +241,33 @@ export default function SchemaPairGenerator() {
           )}
 
           {/* Next Steps */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
             <p className="text-sm font-medium text-blue-900 mb-2">🎯 Next Steps:</p>
             <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-              <li>Download both schemas (saved automatically to backend)</li>
-              <li>Scroll down to <strong>Schema-Based Claims Generator</strong></li>
-              <li>Select <code>{result.claim_schema_file}</code> from the dropdown</li>
-              <li>Generate demo claims with perfect field alignment</li>
-              <li>Upload SOP with <code>{result.sop_schema_file}</code> in Single File Audit</li>
-              <li>Validate the generated claims → Perfect match! ✨</li>
+              <li>Schemas saved automatically to backend</li>
+              <li>Generate demo claims in <strong>Schema-Based Claims Generator</strong> using <code>{result.claim_schema_file}</code></li>
+              <li>Run Single File Audit with the matching SOP + claim schemas</li>
             </ol>
+            <Link
+              to={`/audit-oversight?tab=testd&claimSchema=${encodeURIComponent(result.claim_schema_file)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium mr-2"
+            >
+              Generate Claims (scroll down)
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to={`/audit-oversight?tab=single-audit&sopSchema=${encodeURIComponent(result.sop_schema_file)}&claimSchema=${encodeURIComponent(result.claim_schema_file)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+            >
+              Open Single File Audit
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            {result.detected_domain && (
+              <p className="text-xs text-blue-700">
+                Detected domain: <strong>{result.detected_domain.label}</strong>
+                {' '}({result.extracted_rules_count} rules embedded in SOP schema)
+              </p>
+            )}
           </div>
         </div>
       )}

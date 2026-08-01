@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FileText, CheckCircle2, Clock, RefreshCw } from 'lucide-react';
 import { generateClaimsFromSchema, listSchemas } from '../services/api';
+import SopNamingPreview from './SopNamingPreview';
+import {
+  loadSopBundle,
+  extractSlugFromSchemaFilename,
+  type SopBundle,
+} from '../utils/sopNaming';
 
 export default function SchemaBasedClaimsGenerator() {
+  const [searchParams] = useSearchParams();
   const [docType, setDocType] = useState('claim');
-  const [schemaVersion, setSchemaVersion] = useState('claim_schema_v1.0.json');
+  const [schemaVersion, setSchemaVersion] = useState('');
   const [availableSchemas, setAvailableSchemas] = useState<string[]>([]);
+  const [activeBundle, setActiveBundle] = useState<SopBundle | null>(null);
   const [numCompliant, setNumCompliant] = useState(1);
   const [numNoncompliant, setNumNoncompliant] = useState(1);
   const [generating, setGenerating] = useState(false);
@@ -16,17 +25,33 @@ export default function SchemaBasedClaimsGenerator() {
   // Load available schemas on mount
   useEffect(() => {
     loadSchemas();
-  }, [docType]);
+  }, [docType, searchParams]);
 
   const loadSchemas = async () => {
     setLoadingSchemas(true);
     try {
+      const bundle = loadSopBundle();
+      setActiveBundle(bundle);
+
       const data = await listSchemas(docType);
       if (data.success && data.schema_files) {
-        setAvailableSchemas(data.schema_files);
-        // Set first schema as default if available
-        if (data.schema_files.length > 0 && !schemaVersion) {
-          setSchemaVersion(data.schema_files[0]);
+        const claimFiles = data.schema_files.filter((f: string) => f.startsWith('claim_'));
+        setAvailableSchemas(claimFiles);
+
+        const fromUrl = searchParams.get('claimSchema');
+        const preferred =
+          fromUrl ||
+          bundle?.claim_schema_file ||
+          '';
+        const pick =
+          (preferred && claimFiles.includes(preferred) && preferred) ||
+          (bundle?.slug &&
+            claimFiles.find((f: string) => f.includes(bundle.slug))) ||
+          claimFiles[claimFiles.length - 1] ||
+          '';
+
+        if (pick) {
+          setSchemaVersion(pick);
         }
       }
     } catch (err) {
@@ -37,6 +62,11 @@ export default function SchemaBasedClaimsGenerator() {
   };
 
   const handleGenerate = async () => {
+    if (!schemaVersion) {
+      setError('Select a claim schema file first (refresh list after Schema Pair generation)');
+      return;
+    }
+
     setGenerating(true);
     setError('');
     setResult(null);
@@ -57,8 +87,31 @@ export default function SchemaBasedClaimsGenerator() {
     }
   };
 
+  const activeSlug =
+    activeBundle?.slug ||
+    extractSlugFromSchemaFilename(schemaVersion) ||
+    '';
+
   return (
     <div className="space-y-4">
+      {activeBundle && (
+        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-900">
+          Linked to SOP slug <code className="font-mono bg-purple-100 px-1 rounded">{activeBundle.slug}</code>
+          {activeBundle.sop_source_file && (
+            <span className="text-purple-700"> from {activeBundle.sop_source_file}</span>
+          )}
+        </div>
+      )}
+
+      {activeSlug && (
+        <SopNamingPreview
+          slug={activeSlug}
+          version={activeBundle?.version || '1.0'}
+          bundle={activeBundle}
+          compact={false}
+        />
+      )}
+
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -76,7 +129,7 @@ export default function SchemaBasedClaimsGenerator() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Schema File
+            Claim schema <span className="text-gray-400 font-normal">(claim_{'{slug}'}_v…)</span>
           </label>
           <div className="flex gap-2">
             <select
@@ -139,7 +192,7 @@ export default function SchemaBasedClaimsGenerator() {
 
       <button
         onClick={handleGenerate}
-        disabled={generating}
+        disabled={generating || !schemaVersion}
         className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {generating ? (
@@ -169,9 +222,22 @@ export default function SchemaBasedClaimsGenerator() {
               <p className="font-semibold text-green-900 mb-2">
                 ✅ Successfully generated {result.num_claims_generated} claims!
               </p>
-              <p className="text-sm text-green-700 mb-3">
-                Schema: <code className="bg-green-100 px-2 py-1 rounded">{docType}_schema_v{result.schema_version}.json</code>
+              <p className="text-sm text-green-700 mb-1">
+                SOP slug: <code className="bg-green-100 px-2 py-1 rounded">{result.sop_slug || activeSlug}</code>
               </p>
+              <p className="text-sm text-green-700 mb-3">
+                Claim schema: <code className="bg-green-100 px-2 py-1 rounded">{result.schema_file || schemaVersion}</code>
+              </p>
+              {result.output_directory && (
+                <p className="text-xs text-green-700 mb-2 font-mono">
+                  Saved to: {result.output_directory}
+                </p>
+              )}
+              {result.detected_domain?.label && (
+                <p className="text-xs text-green-700 mb-2">
+                  Domain: {result.detected_domain.label}
+                </p>
+              )}
               
               {result.saved_files && result.saved_files.length > 0 && (
                 <div className="space-y-2">

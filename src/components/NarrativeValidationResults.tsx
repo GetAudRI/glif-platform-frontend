@@ -195,9 +195,14 @@ export default function NarrativeValidationResults({ results, compact = false }:
         {results.compliance_score !== undefined && (
           <div className="mt-4 pt-4 border-t border-blue-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Compliance Score</span>
+              <div>
+                <span className="text-sm font-medium text-gray-700">Rule pass rate</span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  passed ÷ (passed + failed + warnings); N/A excluded
+                </p>
+              </div>
               <span className={`text-xl font-bold ${results.compliance_score >= 80 ? 'text-green-600' : results.compliance_score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {results.compliance_score}%
+                {results.rule_pass_rate ?? results.compliance_score}%
               </span>
             </div>
           </div>

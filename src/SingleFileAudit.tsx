@@ -138,11 +138,10 @@ export default function SingleFileAudit() {
     listSchemas('claim')
       .then(data => {
         if (data.success && data.schema_files) {
-          setAvailableClaimSchemas(data.schema_files);
-          if (claimFromUrl && data.schema_files.includes(claimFromUrl)) {
+          const claimFiles = data.schema_files.filter((f: string) => f.startsWith('claim_'));
+          setAvailableClaimSchemas(claimFiles);
+          if (claimFromUrl && claimFiles.includes(claimFromUrl)) {
             setClaimSchemaVersion(claimFromUrl);
-          } else if (data.schema_files.length > 0) {
-            setClaimSchemaVersion(data.schema_files[0]);
           }
         }
       })
@@ -152,12 +151,11 @@ export default function SingleFileAudit() {
     listSchemas('sop')
       .then(data => {
         if (data.success && data.schema_files) {
-          setAvailableSopSchemas(data.schema_files);
-          if (sopFromUrl && data.schema_files.includes(sopFromUrl)) {
+          const sopFiles = data.schema_files.filter((f: string) => f.startsWith('sop_'));
+          setAvailableSopSchemas(sopFiles);
+          if (sopFromUrl && sopFiles.includes(sopFromUrl)) {
             setSopSchemaVersion(sopFromUrl);
             setSopMode('upload');
-          } else if (data.schema_files.length > 0) {
-            setSopSchemaVersion(data.schema_files[0]);
           }
         }
       })
@@ -281,12 +279,20 @@ export default function SingleFileAudit() {
     setSopLoading(true);
     setError('');
 
+    const stem = file.name.replace(/\.[^.]+$/, '');
+    const inferredSchema =
+      availableSopSchemas.find((s) => s === `sop_${stem}_v1.0.json`) ||
+      availableSopSchemas.find((s) => s.includes(stem)) ||
+      (sopSchemaVersion.startsWith('sop_') ? sopSchemaVersion : '');
+    if (inferredSchema && inferredSchema !== sopSchemaVersion) {
+      setSopSchemaVersion(inferredSchema);
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     
-    // Add schema_version if selected (optional for SOP)
-    if (sopSchemaVersion) {
-      formData.append('schema_version', sopSchemaVersion);
+    if (inferredSchema) {
+      formData.append('schema_version', inferredSchema);
       formData.append('use_schema', 'true');
     }
 
@@ -296,7 +302,10 @@ export default function SingleFileAudit() {
         body: formData
       });
 
-      if (!response.ok) throw new Error('Failed to upload SOP');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to upload SOP');
+      }
 
       const data = await response.json();
       setSelectedPlaybookId(data.playbook_id);
@@ -307,14 +316,22 @@ export default function SingleFileAudit() {
 
       if (playbookData.success) {
         const rules = playbookData.playbook.extracted_rules;
+        const ruleCount = Array.isArray(rules) ? rules.length : 0;
         console.log('Playbook data loaded (UPLOAD):', {
           playbook_id: data.playbook_id,
           extracted_rules: rules,
           rules_type: typeof rules,
           is_array: Array.isArray(rules),
-          rules_length: Array.isArray(rules) ? rules.length : 'N/A',
+          rules_length: ruleCount,
           rules_structure: JSON.stringify(rules).substring(0, 500)
         });
+        if (ruleCount === 0) {
+          setError(
+            'Extracted 0 rules. Select sop_commercial_auto_closed_claim_sop_v1.0.json before uploading the SOP.'
+          );
+          setSopData(null);
+          return;
+        }
         setSopData(rules);
       }
     } catch (err: any) {

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Activity, BarChart3, Calendar, Cpu } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { apiFetch } from '../utils/apiClient';
 
-const API_BASE = 'http://localhost:5002';
 
 interface CostSummary {
   total_cost: number;
@@ -47,7 +47,7 @@ export default function CostAnalytics() {
     try {
       // Load summary
       try {
-        const summaryRes = await fetch(`${API_BASE}/analytics/api/costs/summary`);
+        const summaryRes = await apiFetch('/analytics/api/costs/summary');
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
           setSummary(summaryData);
@@ -61,7 +61,7 @@ export default function CostAnalytics() {
 
       // Load daily costs
       try {
-        const dailyRes = await fetch(`${API_BASE}/analytics/api/costs/daily`);
+        const dailyRes = await apiFetch('/analytics/api/costs/daily');
         if (dailyRes.ok) {
           const dailyData = await dailyRes.json();
           setDailyCosts(Array.isArray(dailyData) ? dailyData : []);
@@ -75,7 +75,7 @@ export default function CostAnalytics() {
 
       // Load model costs
       try {
-        const modelRes = await fetch(`${API_BASE}/analytics/api/costs/by-model`);
+        const modelRes = await apiFetch('/analytics/api/costs/by-model');
         if (modelRes.ok) {
           const modelData = await modelRes.json();
           setModelCosts(Array.isArray(modelData) ? modelData : []);

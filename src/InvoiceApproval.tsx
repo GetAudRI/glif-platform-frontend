@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, AlertTriangle, XCircle, Download, List, Plus, X } from 'lucide-react';
 import { uploadInvoiceApprovalSOP, uploadInvoice, validateInvoice, getInvoiceApprovalResults, getTeamCheckpostFile } from './services/api';
+import { apiFetch } from './utils/apiClient';
+import { canMutate } from './utils/auth';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
@@ -54,7 +56,7 @@ export default function InvoiceApproval() {
   // Load existing playbooks and checkposts on mount
   useEffect(() => {
     // Fetch playbooks (RFP/SOW documents)
-    fetch('http://localhost:5002/api/audit-oversight/playbooks')
+    apiFetch('/api/audit-oversight/playbooks')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -64,7 +66,7 @@ export default function InvoiceApproval() {
       .catch(err => console.error('Failed to load playbooks:', err));
 
     // Fetch team checkpost files (show all, including linked ones)
-    fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+    apiFetch('/api/audit-oversight/team-checkposts?show_all=true')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -81,6 +83,10 @@ export default function InvoiceApproval() {
   };
 
   const handleSopUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setSopFile(file);
     setSopLoading(true);
     setError('');
@@ -90,7 +96,7 @@ export default function InvoiceApproval() {
       setSelectedPlaybookId(data.playbook_id);
 
       // Fetch the playbook details to get extracted rules
-      const playbookResponse = await fetch(`http://localhost:5002/api/audit-oversight/playbooks/${data.playbook_id}`);
+      const playbookResponse = await apiFetch(`/api/audit-oversight/playbooks/${data.playbook_id}`);
       const playbookData = await playbookResponse.json();
 
       if (playbookData.success) {
@@ -110,7 +116,7 @@ export default function InvoiceApproval() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:5002/api/audit-oversight/playbooks/${playbookId}`);
+      const response = await apiFetch(`/api/audit-oversight/playbooks/${playbookId}`);
       const data = await response.json();
 
       if (!data.success) throw new Error('Failed to load playbook');
@@ -127,6 +133,10 @@ export default function InvoiceApproval() {
   };
 
   const handleCheckpostUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setCheckpostFile(file);
     setCheckpostLoading(true);
     setError('');
@@ -135,7 +145,7 @@ export default function InvoiceApproval() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5002/api/audit-oversight/checkposts/upload', {
+      const response = await apiFetch('/api/audit-oversight/checkposts/upload', {
         method: 'POST',
         body: formData
       });
@@ -192,7 +202,7 @@ export default function InvoiceApproval() {
     
     // Fetch the team checkpost file to get count
     try {
-      const response = await fetch(`http://localhost:5002/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`);
+      const response = await apiFetch(`/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`);
       const data = await response.json();
       
       if (data.success && data.team_checkpost_file) {
@@ -216,7 +226,7 @@ export default function InvoiceApproval() {
 
   const linkTeamCheckpostToPlaybook = async (playbookId: number, teamCheckpostFileId: number) => {
     try {
-      const response = await fetch('http://localhost:5002/rules-engine/auto-claims/link-checkpost', {
+      const response = await apiFetch('/rules-engine/auto-claims/link-checkpost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -238,7 +248,7 @@ export default function InvoiceApproval() {
   // Check for linked team checkpost file when playbook is selected
   useEffect(() => {
     if (selectedPlaybookId) {
-      fetch(`http://localhost:5002/api/audit-oversight/playbooks/${selectedPlaybookId}`)
+      apiFetch(`/api/audit-oversight/playbooks/${selectedPlaybookId}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.playbook.team_checkpost_file) {
@@ -256,6 +266,10 @@ export default function InvoiceApproval() {
   }, [selectedPlaybookId]);
 
   const handleInvoiceUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setInvoiceFile(file);
     setInvoiceLoading(true);
     setError('');
@@ -366,7 +380,7 @@ export default function InvoiceApproval() {
     // If still no ID, try to get it from the playbook
     if (!teamCheckpostFileId && selectedPlaybookId) {
       try {
-        const playbookResponse = await fetch(`http://localhost:5002/api/audit-oversight/playbooks/${selectedPlaybookId}`);
+        const playbookResponse = await apiFetch(`/api/audit-oversight/playbooks/${selectedPlaybookId}`);
         const playbookData = await playbookResponse.json();
         if (playbookData.success && playbookData.playbook?.team_checkpost_file?.id) {
           teamCheckpostFileId = playbookData.playbook.team_checkpost_file.id;
@@ -527,6 +541,7 @@ export default function InvoiceApproval() {
               <List className="inline-block w-5 h-5 mr-2" />
               Select Existing
             </button>
+            {canMutate() && (
             <button
               onClick={() => setSopMode('upload')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'upload'
@@ -537,6 +552,7 @@ export default function InvoiceApproval() {
               <Plus className="inline-block w-5 h-5 mr-2" />
               Upload New
             </button>
+            )}
           </div>
 
           {/* Select Existing Mode */}
@@ -684,6 +700,7 @@ export default function InvoiceApproval() {
               <List className="inline-block w-5 h-5 mr-2" />
               Select Existing
             </button>
+            {canMutate() && (
             <button
               onClick={() => setCheckpostMode('upload')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${checkpostMode === 'upload'
@@ -694,6 +711,7 @@ export default function InvoiceApproval() {
               <Plus className="inline-block w-5 h-5 mr-2" />
               Upload New
             </button>
+            )}
           </div>
 
           {/* Skip Mode */}

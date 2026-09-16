@@ -13,6 +13,9 @@ import {
 } from './services/api';
 import NarrativeValidationResults from './components/NarrativeValidationResults';
 import { summarizeRuleChecks, rulePassRateSubtitle } from './utils/validationScoring';
+import { API_BASE } from './config';
+import { apiFetch } from './utils/apiClient';
+import { isViewer, getToken, canMutate } from './utils/auth';
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
@@ -167,7 +170,7 @@ export default function SingleFileAudit() {
     loadExistingPolicyDeclarations();
 
     // Fetch playbooks
-    fetch('http://localhost:5002/api/audit-oversight/playbooks')
+    apiFetch('/api/audit-oversight/playbooks')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -177,7 +180,7 @@ export default function SingleFileAudit() {
       .catch(err => console.error('Failed to load playbooks:', err));
 
     // Fetch team checkpost files
-    fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+    apiFetch('/api/audit-oversight/team-checkposts?show_all=true')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -270,6 +273,10 @@ export default function SingleFileAudit() {
   };
 
   const handleSopUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setSopFile(file);
     setSopLoading(true);
     setError('');
@@ -284,7 +291,7 @@ export default function SingleFileAudit() {
     }
 
     try {
-      const response = await fetch('http://localhost:5002/api/audit-oversight/playbooks/upload', {
+      const response = await apiFetch('/api/audit-oversight/playbooks/upload', {
         method: 'POST',
         body: formData
       });
@@ -295,7 +302,7 @@ export default function SingleFileAudit() {
       setSelectedPlaybookId(data.playbook_id);
 
       // Fetch the playbook details to get extracted rules
-      const playbookResponse = await fetch(`http://localhost:5002/api/audit-oversight/playbooks/${data.playbook_id}`);
+      const playbookResponse = await apiFetch(`/api/audit-oversight/playbooks/${data.playbook_id}`);
       const playbookData = await playbookResponse.json();
 
       if (playbookData.success) {
@@ -323,7 +330,7 @@ export default function SingleFileAudit() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:5002/api/audit-oversight/playbooks/${playbookId}`);
+      const response = await apiFetch(`/api/audit-oversight/playbooks/${playbookId}`);
       const data = await response.json();
 
       if (!data.success) throw new Error('Failed to load playbook');
@@ -348,6 +355,10 @@ export default function SingleFileAudit() {
   };
 
   const handleCheckpostUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setCheckpostFile(file);
     setCheckpostLoading(true);
     setError('');
@@ -356,7 +367,7 @@ export default function SingleFileAudit() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5002/api/audit-oversight/checkposts/upload', {
+      const response = await apiFetch('/api/audit-oversight/checkposts/upload', {
         method: 'POST',
         body: formData
       });
@@ -383,7 +394,7 @@ export default function SingleFileAudit() {
         console.log('✅ Team checkpost file uploaded:', data.team_checkpost_file_id);
         
         // Reload team checkpost files list
-        const listResponse = await fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true');
+        const listResponse = await apiFetch('/api/audit-oversight/team-checkposts?show_all=true');
         const listData = await listResponse.json();
         if (listData.success) {
           setExistingTeamCheckpostFiles(listData.team_checkpost_files || []);
@@ -412,6 +423,10 @@ export default function SingleFileAudit() {
   };
 
   const handleClaimUpload = async (file: File) => {
+    if (!canMutate()) {
+      setError('Demo account is view-only');
+      return;
+    }
     setClaimFile(file);
     setClaimLoading(true);
     setError('');
@@ -463,7 +478,7 @@ export default function SingleFileAudit() {
     
     try {
       // Fetch the full claim data
-      const response = await fetch(`http://localhost:5002/api/audit-oversight/documents/${claim.id}`);
+      const response = await apiFetch(`/api/audit-oversight/documents/${claim.id}`);
       const data = await response.json();
       
       if (!data.success || !data.document) {
@@ -526,6 +541,10 @@ export default function SingleFileAudit() {
   };
 
   const handleValidate = async () => {
+    if (!canMutate()) {
+      setError('Demo account is view-only. Open Audit Results to review existing runs.');
+      return;
+    }
     setValidateLoading(true);
     setError('');
 
@@ -584,7 +603,7 @@ export default function SingleFileAudit() {
 
     try {
       // Start audit with database IDs
-      const response = await fetch('http://localhost:5002/api/audit-oversight/audit/start', {
+      const response = await apiFetch('/api/audit-oversight/audit/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
@@ -738,6 +757,7 @@ export default function SingleFileAudit() {
               <List className="inline-block w-5 h-5 mr-2" />
               Select Existing
             </button>
+            {canMutate() && (
             <button
               onClick={() => setSopMode('upload')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${sopMode === 'upload'
@@ -748,6 +768,7 @@ export default function SingleFileAudit() {
               <Plus className="inline-block w-5 h-5 mr-2" />
               Upload New
             </button>
+            )}
           </div>
 
 
@@ -934,7 +955,7 @@ export default function SingleFileAudit() {
               onClick={() => {
                 setCheckpostMode('select');
                 // Reload team checkpost files when switching to select mode
-                fetch('http://localhost:5002/api/audit-oversight/team-checkposts?show_all=true')
+                apiFetch('/api/audit-oversight/team-checkposts?show_all=true')
                   .then(res => res.json())
                   .then(data => {
                     if (data.success) {
@@ -951,6 +972,7 @@ export default function SingleFileAudit() {
               <List className="inline-block w-5 h-5 mr-2" />
               Select Existing ({existingTeamCheckpostFiles.length})
             </button>
+            {canMutate() && (
             <button
               onClick={() => setCheckpostMode('upload')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${checkpostMode === 'upload'
@@ -961,6 +983,7 @@ export default function SingleFileAudit() {
               <Plus className="inline-block w-5 h-5 mr-2" />
               Upload New
             </button>
+            )}
           </div>
 
           {/* Skip Mode */}
@@ -1119,6 +1142,7 @@ export default function SingleFileAudit() {
             >
               Select Existing ({existingClaims.length})
             </button>
+            {canMutate() && (
             <button
               onClick={() => setClaimMode('upload')}
               className={`px-6 py-3 font-medium transition-colors ${
@@ -1129,6 +1153,7 @@ export default function SingleFileAudit() {
             >
               Upload New
             </button>
+            )}
           </div>
 
           {/* Select Existing Claim Mode */}
@@ -1828,7 +1853,8 @@ export default function SingleFileAudit() {
                           alert('Invalid format. Please enter csv, json, or pdf.');
                           return;
                         }
-                        const url = `http://localhost:5002/api/audit-oversight/audit/${results.audit_id}/download/${format}`;
+                        const token = getToken();
+                        const url = `${API_BASE}/api/audit-oversight/audit/${results.audit_id}/download/${format}${token ? `?access_token=${encodeURIComponent(token)}` : ''}`;
                         // open in same tab to trigger download
                         window.location.href = url;
                       }}

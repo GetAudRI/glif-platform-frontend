@@ -1,5 +1,7 @@
 import React from 'react';
 import { X, FileText, Download, ExternalLink } from 'lucide-react';
+import { API_BASE } from '../config';
+import { getToken } from '../utils/auth';
 
 interface Document {
   id: number;
@@ -16,8 +18,7 @@ interface DocumentViewerProps {
 export default function DocumentViewer({ document, onClose }: DocumentViewerProps) {
   if (!document) return null;
 
-  const API_BASE = 'http://localhost:5002';
-  // Determine the correct file endpoint based on document type
+    // Determine the correct file endpoint based on document type
   let fileUrl: string;
   if (document.document_type === 'playbook') {
     fileUrl = `${API_BASE}/api/audit-oversight/playbooks/${document.id}/file`;
@@ -27,6 +28,10 @@ export default function DocumentViewer({ document, onClose }: DocumentViewerProp
     fileUrl = `${API_BASE}/api/audit-oversight/team-checkposts/${document.id}/file`;
   } else {
     fileUrl = `${API_BASE}/api/audit-oversight/documents/${document.id}/file`;
+  }
+  const token = getToken();
+  if (token) {
+    fileUrl += `${fileUrl.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`;
   }
   
   // Determine file type from extension

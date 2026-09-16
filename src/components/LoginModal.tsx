@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, User } from 'lucide-react';
+import { API_BASE } from '../config';
+import { setAuth } from '../utils/auth';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -7,8 +9,6 @@ interface LoginModalProps {
   onLogin: (username: string) => void;
   useCaseName?: string;
 }
-
-const API_BASE = 'http://localhost:5002';
 
 export default function LoginModal({ isOpen, onClose, onLogin, useCaseName }: LoginModalProps) {
   const [username, setUsername] = useState('');
@@ -34,14 +34,13 @@ export default function LoginModal({ isOpen, onClose, onLogin, useCaseName }: Lo
 
       const data = await response.json();
 
-      if (data.success) {
-        // Store auth in localStorage
-        localStorage.setItem('audri_auth', JSON.stringify({
+      if (data.success && data.token && data.user) {
+        setAuth({
           username: data.user.username,
           role: data.user.role,
-          authenticated: true
-        }));
-        
+          token: data.token,
+          authenticated: true,
+        });
         onLogin(data.user.username);
         setUsername('');
         setPassword('');
@@ -123,14 +122,6 @@ export default function LoginModal({ isOpen, onClose, onLogin, useCaseName }: Lo
                 required
               />
             </div>
-          </div>
-
-          {/* Demo Credentials Hint */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-            <p className="font-semibold mb-1">Demo Credentials:</p>
-            <p>Username: <strong>admin</strong> / Password: <strong>admin123</strong></p>
-            <p>Username: <strong>user</strong> / Password: <strong>password123</strong></p>
-            <p>Username: <strong>demo</strong> / Password: <strong>demo123</strong></p>
           </div>
 
           {/* Buttons */}

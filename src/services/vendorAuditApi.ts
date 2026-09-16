@@ -1,9 +1,11 @@
+import { API_BASE } from '../config';
+import { authHeaders, canMutate } from '../utils/auth';
 /**
  * Vendor Audit API Service
  * API client for vendor audit operations
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002';
+const API_BASE_URL = API_BASE;
 const VENDOR_AUDIT_BASE = `${API_BASE_URL}/api/vendor-audit`;
 
 // Types
@@ -90,9 +92,13 @@ export interface PortfolioMetrics {
 
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD'].includes(method) && !canMutate()) {
+    throw new Error('Demo account is view-only');
+  }
   const headers = {
     'Content-Type': 'application/json',
-    'X-User-Id': 'demo-user', // TODO: Replace with actual auth
+    ...authHeaders(),
     ...options.headers,
   };
 

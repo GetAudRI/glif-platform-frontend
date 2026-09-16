@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from './utils/apiClient';
+import { canMutate } from './utils/auth';
 import {
   Upload,
   FileText,
@@ -19,7 +21,6 @@ import {
 
 type StepStatus = 'active' | 'complete' | 'pending';
 
-const API_BASE = 'http://localhost:5002';
 
 export default function ContractReview() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -68,7 +69,7 @@ export default function ContractReview() {
 
   const loadExistingPlaybooks = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/playbooks`);
+      const response = await apiFetch(`/api/contract-review/playbooks`);
       const data = await response.json();
       if (data.success) {
         setExistingPlaybooks(data.playbooks || []);
@@ -81,7 +82,7 @@ export default function ContractReview() {
   const loadExistingContracts = async () => {
     setLoadingContracts(true);
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/contracts?extracted_only=true`);
+      const response = await apiFetch(`/api/contract-review/contracts?extracted_only=true`);
       const data = await response.json();
       if (data.success) {
         setExistingContracts(data.documents || []);
@@ -120,7 +121,7 @@ export default function ContractReview() {
     formData.append('file', file);
 
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/playbooks/upload`, {
+      const response = await apiFetch(`/api/contract-review/playbooks/upload`, {
         method: 'POST',
         body: formData
       });
@@ -135,7 +136,7 @@ export default function ContractReview() {
       setSelectedPlaybookName(data.name);
 
       // Fetch the playbook details to get extracted rules
-      const playbookResponse = await fetch(`${API_BASE}/api/contract-review/playbooks/${data.playbook_id}`);
+      const playbookResponse = await apiFetch(`/api/contract-review/playbooks/${data.playbook_id}`);
       const playbookData = await playbookResponse.json();
 
       if (playbookData.success) {
@@ -158,7 +159,7 @@ export default function ContractReview() {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/playbooks/${playbookId}`);
+      const response = await apiFetch(`/api/contract-review/playbooks/${playbookId}`);
       const data = await response.json();
 
       if (!data.success) throw new Error('Failed to load playbook');
@@ -183,7 +184,7 @@ export default function ContractReview() {
     formData.append('file', file);
 
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/contracts/upload`, {
+      const response = await apiFetch(`/api/contract-review/contracts/upload`, {
         method: 'POST',
         body: formData
       });
@@ -214,7 +215,7 @@ export default function ContractReview() {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/contracts/${documentId}`);
+      const response = await apiFetch(`/api/contract-review/contracts/${documentId}`);
       const data = await response.json();
 
       if (!data.success) throw new Error('Failed to load contract');
@@ -238,7 +239,7 @@ export default function ContractReview() {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/contract-review/validate`, {
+      const response = await apiFetch(`/api/contract-review/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -395,6 +396,7 @@ export default function ContractReview() {
                   <List className="w-4 h-4 inline mr-2" />
                   Select Existing
                 </button>
+                {canMutate() && (
                 <button
                   onClick={() => setPlaybookMode('upload')}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -406,6 +408,7 @@ export default function ContractReview() {
                   <Upload className="w-4 h-4 inline mr-2" />
                   Upload New
                 </button>
+                )}
               </div>
             </div>
 
@@ -506,6 +509,7 @@ export default function ContractReview() {
                   <List className="w-4 h-4 inline mr-2" />
                   Select Existing
                 </button>
+                {canMutate() && (
                 <button
                   onClick={() => setContractMode('upload')}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -517,6 +521,7 @@ export default function ContractReview() {
                   <Upload className="w-4 h-4 inline mr-2" />
                   Upload New
                 </button>
+                )}
               </div>
             </div>
 

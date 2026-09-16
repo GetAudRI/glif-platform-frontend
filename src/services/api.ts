@@ -1,25 +1,26 @@
 // API Service for AudRI Audit Oversight
-// Updated to point to audri-platform-backend
-const API_BASE = 'http://localhost:5002';
+import { API_BASE } from '../config';
+import { authHeaders, canMutate } from '../utils/auth';
+
+async function authedFetch(input: string, init: RequestInit = {}) {
+  const method = (init.method || 'GET').toUpperCase();
+  const isAuth = input.includes('/api/auth/');
+  if (!isAuth && !['GET', 'HEAD'].includes(method) && !canMutate()) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Demo account is view-only' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  const headers = new Headers(init.headers);
+  Object.entries(authHeaders()).forEach(([key, value]) => {
+    if (!headers.has(key)) headers.set(key, value);
+  });
+  return fetch(input, { ...init, headers });
+}
 
 async function safeJson(response: Response) {
   const text = await response.text();
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'initial',
-        hypothesisId: 'H1',
-        location: 'services/api.ts:safeJson',
-        message: 'parsing json',
-        data: { status: response.status, url: response.url, snippet: text.slice(0, 120) },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
     return JSON.parse(text);
   } catch {
     throw new Error(
@@ -35,7 +36,7 @@ async function safeJson(response: Response) {
  */
 export async function login(username: string, password: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/login`, {
+    const response = await authedFetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,7 +62,7 @@ export async function login(username: string, password: string) {
  */
 export async function logout() {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    const response = await authedFetch(`${API_BASE}/api/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,14 +80,13 @@ export async function logout() {
 /**
  * Verify authentication
  */
-export async function verifyAuth(username: string) {
+export async function verifyAuth(_username?: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/verify`, {
-      method: 'POST',
+    const response = await authedFetch(`${API_BASE}/api/auth/verify`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username }),
     });
     
     const data = await response.json();
@@ -106,7 +106,7 @@ export async function verifyAuth(username: string) {
  */
 export async function listContractReviewPlaybooks() {
   try {
-    const response = await fetch(`${API_BASE}/api/contract-review/playbooks`);
+    const response = await authedFetch(`${API_BASE}/api/contract-review/playbooks`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -120,7 +120,7 @@ export async function listContractReviewPlaybooks() {
  */
 export async function getContractReviewPlaybook(playbookId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/contract-review/playbooks/${playbookId}`);
+    const response = await authedFetch(`${API_BASE}/api/contract-review/playbooks/${playbookId}`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -137,7 +137,7 @@ export async function uploadContractReviewPlaybook(file: File) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/api/contract-review/playbooks/upload`, {
+    const response = await authedFetch(`${API_BASE}/api/contract-review/playbooks/upload`, {
       method: 'POST',
       body: formData
     });
@@ -164,7 +164,7 @@ export async function listContractReviewContracts(options?: { search?: string; e
     if (options?.search) params.append('search', options.search);
     if (options?.extractedOnly) params.append('extracted_only', 'true');
 
-    const response = await fetch(`${API_BASE}/api/contract-review/contracts?${params.toString()}`);
+    const response = await authedFetch(`${API_BASE}/api/contract-review/contracts?${params.toString()}`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -178,7 +178,7 @@ export async function listContractReviewContracts(options?: { search?: string; e
  */
 export async function getContractReviewContract(documentId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/contract-review/contracts/${documentId}`);
+    const response = await authedFetch(`${API_BASE}/api/contract-review/contracts/${documentId}`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -195,7 +195,7 @@ export async function uploadContractReviewContract(file: File) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/api/contract-review/contracts/upload`, {
+    const response = await authedFetch(`${API_BASE}/api/contract-review/contracts/upload`, {
       method: 'POST',
       body: formData
     });
@@ -218,7 +218,7 @@ export async function uploadContractReviewContract(file: File) {
  */
 export async function validateContractReview(playbookId: number, documentId: number, useFastValidation: boolean = false) {
   try {
-    const response = await fetch(`${API_BASE}/api/contract-review/validate`, {
+    const response = await authedFetch(`${API_BASE}/api/contract-review/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ export async function validateContractReview(playbookId: number, documentId: num
  */
 export async function getContractReviewValidation(validationId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/contract-review/validations/${validationId}`);
+    const response = await authedFetch(`${API_BASE}/api/contract-review/validations/${validationId}`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -260,17 +260,17 @@ export async function getContractReviewValidation(validationId: number) {
 // ==================== END CONTRACT REVIEW API ====================
 
 export async function testConnection() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/health`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/health`);
   return response.json();
 }
 
 export async function testAuditModule() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/health`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/health`);
   return response.json();
 }
 
 export async function listClaims(limit = 100) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/documents?type=claim&limit=${limit}`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/documents?type=claim&limit=${limit}`);
   return safeJson(response);
 }
 
@@ -279,17 +279,17 @@ export async function listSOPs() {
 }
 
 export async function listAuditPlaybooks() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/playbooks`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/playbooks`);
   return safeJson(response);
 }
 
 export async function listTeamCheckpostFiles() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/team-checkposts?show_all=true`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/team-checkposts?show_all=true`);
   return safeJson(response);
 }
 
 export async function startAudit(claims: string[], sops: string[], teamCheckpostFileId?: number) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/audit/start`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -298,69 +298,24 @@ export async function startAudit(claims: string[], sops: string[], teamCheckpost
       ...(teamCheckpostFileId ? { team_checkpost_file_id: teamCheckpostFileId } : {})
     })
   });
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'debug-session',
-      runId: 'initial',
-      hypothesisId: 'H2',
-      location: 'services/api.ts:startAudit',
-      message: 'startAudit response status',
-      data: { status: response.status, url: response.url, hasCheckpost: !!teamCheckpostFileId },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
   return safeJson(response);
 }
 
 export async function startExtraction(auditId: string) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/extract`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'debug-session',
-      runId: 'initial',
-      hypothesisId: 'H3',
-      location: 'services/api.ts:startExtraction',
-      message: 'startExtraction response status',
-      data: { status: response.status, url: response.url, auditId },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
   return safeJson(response);
 }
 
 export async function getAuditProgress(auditId: string) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/progress`);
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/e97752a4-3e96-4f05-babb-2cb091b3e4ba', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'debug-session',
-      runId: 'initial',
-      hypothesisId: 'H4',
-      location: 'services/api.ts:getAuditProgress',
-      message: 'progress response status',
-      data: { status: response.status, url: response.url, auditId },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/progress`);
   return safeJson(response);
 }
 
 export async function runAuditCheck(auditId: string, claimFile: string, sopFile: string) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/check`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ claim_file: claimFile, sop_file: sopFile })
@@ -369,7 +324,7 @@ export async function runAuditCheck(auditId: string, claimFile: string, sopFile:
 }
 
 export async function getExtractedRules(auditId: string) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/rules`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/rules`);
   return safeJson(response);
 }
 
@@ -380,7 +335,7 @@ export async function getExtractedRules(auditId: string) {
  */
 export async function startValidation(auditId: string, demoMode: boolean = true) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/validate`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -406,7 +361,7 @@ export async function startValidation(auditId: string, demoMode: boolean = true)
  */
 export async function getValidationResults(auditId: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/results`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/results`);
     const data = await safeJson(response);
 
     if (!data.success) {
@@ -430,7 +385,7 @@ export async function getValidationResults(auditId: string) {
  */
 export async function saveRulesToJSON(auditId: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/save-rules`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit/${auditId}/save-rules`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -459,7 +414,7 @@ export async function saveRulesToJSON(auditId: string) {
  */
 export async function getRulesEngineDashboard() {
   try {
-    const response = await fetch(`${API_BASE}/rules-engine/auto-claims/api/dashboard`);
+    const response = await authedFetch(`${API_BASE}/rules-engine/auto-claims/api/dashboard`);
     const data = await response.json();
     
     if (!data.success) {
@@ -478,7 +433,7 @@ export async function getRulesEngineDashboard() {
  */
 export async function linkCheckpost(playbookId: number, teamCheckpostFileId: number) {
   try {
-    const response = await fetch(`${API_BASE}/rules-engine/auto-claims/link-checkpost`, {
+    const response = await authedFetch(`${API_BASE}/rules-engine/auto-claims/link-checkpost`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -507,7 +462,7 @@ export async function linkCheckpost(playbookId: number, teamCheckpostFileId: num
  */
 export async function getPlaybook(playbookId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/playbooks/${playbookId}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/playbooks/${playbookId}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -526,7 +481,7 @@ export async function getPlaybook(playbookId: number) {
  */
 export async function getTeamCheckpostFile(teamCheckpostFileId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -545,7 +500,7 @@ export async function getTeamCheckpostFile(teamCheckpostFileId: number) {
  */
 export async function deletePlaybook(playbookId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/playbooks/${playbookId}`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/playbooks/${playbookId}`, {
       method: 'DELETE',
     });
     const data = await response.json();
@@ -566,7 +521,7 @@ export async function deletePlaybook(playbookId: number) {
  */
 export async function deleteTeamCheckpostFile(teamCheckpostFileId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/team-checkposts/${teamCheckpostFileId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -602,7 +557,7 @@ export async function listPolicyDeclarations(options?: {
     }
     
     const url = `${API_BASE}/api/audit-oversight/policy-declarations${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url);
+    const response = await authedFetch(url);
     const data = await response.json();
     
     if (!data.success) {
@@ -621,7 +576,7 @@ export async function listPolicyDeclarations(options?: {
  */
 export async function getPolicyDeclaration(policyDeclarationId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -645,7 +600,7 @@ export async function uploadPolicyDeclaration(file: File, schemaVersion: string 
     formData.append('schema_version', schemaVersion);
     formData.append('use_schema', 'true');
     
-    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/upload`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/policy-declarations/upload`, {
       method: 'POST',
       body: formData
     });
@@ -668,7 +623,7 @@ export async function uploadPolicyDeclaration(file: File, schemaVersion: string 
  */
 export async function deletePolicyDeclaration(policyDeclarationId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/policy-declarations/${policyDeclarationId}`, {
       method: 'DELETE'
     });
     
@@ -690,7 +645,7 @@ export async function deletePolicyDeclaration(policyDeclarationId: number) {
  */
 export async function listSchemas(docType: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/schemas/${docType}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/schemas/${docType}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -709,7 +664,7 @@ export async function listSchemas(docType: string) {
  */
 export async function getSchema(docType: string, version: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/schemas/${docType}/${version}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/schemas/${docType}/${version}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -735,7 +690,7 @@ export async function uploadInvoiceApprovalSOP(file: File) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/api/invoice-approval/upload-sop`, {
+    const response = await authedFetch(`${API_BASE}/api/invoice-approval/upload-sop`, {
       method: 'POST',
       body: formData
     });
@@ -763,7 +718,7 @@ export async function uploadDocument(file: File, schemaVersion: string = 'stable
     formData.append('schema_version', schemaVersion);
     formData.append('use_schema', 'true');
 
-    const response = await fetch(`${API_BASE}/api/audit-oversight/documents/upload`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/documents/upload`, {
       method: 'POST',
       body: formData
     });
@@ -789,7 +744,7 @@ export async function uploadInvoice(file: File) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/api/invoice-approval/upload-invoice`, {
+    const response = await authedFetch(`${API_BASE}/api/invoice-approval/upload-invoice`, {
       method: 'POST',
       body: formData
     });
@@ -821,7 +776,7 @@ export async function validateInvoice(playbookId: number, documentId: number, te
       body.team_checkpost_file_id = teamCheckpostFileId;
     }
     
-    const response = await fetch(`${API_BASE}/api/invoice-approval/validate`, {
+    const response = await authedFetch(`${API_BASE}/api/invoice-approval/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -847,7 +802,7 @@ export async function validateInvoice(playbookId: number, documentId: number, te
  */
 export async function getInvoiceApprovalResults(validationId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/invoice-approval/results/${validationId}`);
+    const response = await authedFetch(`${API_BASE}/api/invoice-approval/results/${validationId}`);
     const data = await response.json();
 
     if (!response.ok || !data.success) {
@@ -875,7 +830,7 @@ export async function listAuditResults(filters?: { status?: string; is_compliant
     if (filters?.is_compliant !== undefined) params.append('is_compliant', filters.is_compliant.toString());
     
     const url = `${API_BASE}/api/audit-oversight/audit-results${params.toString() ? '?' + params.toString() : ''}`;
-    const response = await fetch(url);
+    const response = await authedFetch(url);
     const data = await response.json();
     
     if (!data.success) {
@@ -894,7 +849,7 @@ export async function listAuditResults(filters?: { status?: string; is_compliant
  */
 export async function getAuditResult(auditResultId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -913,7 +868,7 @@ export async function getAuditResult(auditResultId: number) {
  */
 export async function updateAuditComments(auditResultId: number, comments: string) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/comments`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -939,7 +894,7 @@ export async function updateAuditComments(auditResultId: number, comments: strin
  */
 export async function addManagementResponse(auditResultId: number, response: string, managerName: string) {
   try {
-    const response_data = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/management-response`, {
+    const response_data = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/management-response`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -971,7 +926,7 @@ export async function scheduleClosingMeeting(
   completed: boolean = false
 ) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/closing-meeting`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/closing-meeting`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1006,7 +961,7 @@ export async function distributeReport(
   method: string = 'email'
 ) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/distribute-report`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/distribute-report`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1035,7 +990,7 @@ export async function distributeReport(
  */
 export async function updateFollowUpActions(auditResultId: number, actions: any[]) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/follow-up`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/${auditResultId}/follow-up`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1061,7 +1016,7 @@ export async function updateFollowUpActions(auditResultId: number, actions: any[
  */
 export async function generateMockAuditResults() {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/audit-results/generate-mock`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/audit-results/generate-mock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1102,7 +1057,7 @@ export async function listDocuments(options?: {
     if (options?.search) params.append('search', options.search);
     if (options?.extractedOnly) params.append('extracted_only', 'true');
     
-    const response = await fetch(`${API_BASE}/api/audit-oversight/documents?${params.toString()}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/documents?${params.toString()}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -1121,7 +1076,7 @@ export async function listDocuments(options?: {
  */
 export async function getDocument(documentId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/documents/${documentId}`);
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/documents/${documentId}`);
     const data = await response.json();
     
     if (!data.success) {
@@ -1140,7 +1095,7 @@ export async function getDocument(documentId: number) {
  */
 export async function deleteDocument(documentId: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/documents/${documentId}`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/documents/${documentId}`, {
       method: 'DELETE'
     });
     const data = await response.json();
@@ -1172,7 +1127,7 @@ export async function generateClaimsFromSOP(
     formData.append('num_claims', numClaims.toString());
     formData.append('compliant_ratio', compliantRatio.toString());
     
-    const response = await fetch(`${API_BASE}/api/audit-oversight/generate-claims`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/generate-claims`, {
       method: 'POST',
       body: formData
     });
@@ -1201,7 +1156,7 @@ export async function generateClaimsFromSchema(
   saveFiles: boolean = true
 ) {
   try {
-    const response = await fetch(`${API_BASE}/api/audit-oversight/generate-claims-from-schema`, {
+    const response = await authedFetch(`${API_BASE}/api/audit-oversight/generate-claims-from-schema`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1251,12 +1206,12 @@ export async function generateSchemaPair(
       formData.append('document_type', documentType);
       if (model) formData.append('model', model);
 
-      response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
+      response = await authedFetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
         method: 'POST',
         body: formData,
       });
     } else {
-      response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
+      response = await authedFetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1285,7 +1240,7 @@ export async function generateSchemaPair(
 }
 
 export async function getDocumentTypesCatalog() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/document-types`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/document-types`);
   const data = await safeJson(response);
   if (!response.ok || !data.success) {
     throw new Error(data.error || 'Failed to load document types');
@@ -1300,7 +1255,7 @@ export async function updateSchemaPairRule(body: {
   rule_text?: string;
   description?: string;
 }) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/schema-pair/rules/update`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/schema-pair/rules/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -1313,7 +1268,7 @@ export async function updateSchemaPairRule(body: {
 }
 
 export async function loadSchemaPairReview(sopSchemaFile: string) {
-  const response = await fetch(
+  const response = await authedFetch(
     `${API_BASE}/api/audit-oversight/schema-pair/load?sop_schema_file=${encodeURIComponent(sopSchemaFile)}`
   );
   const data = await safeJson(response);
@@ -1346,7 +1301,7 @@ export async function getGraphSubgraph(params: {
   const url = `${API_BASE}/api/graph/subgraph?${query.toString()}`;
   console.log('🕸️ [API] Fetching graph from:', url);
   
-  const response = await fetch(url);
+  const response = await authedFetch(url);
   console.log('🕸️ [API] Response status:', response.status, response.statusText);
   
   const data = await response.json();
@@ -1369,7 +1324,7 @@ export async function getGraphSubgraph(params: {
  * Get recent validations for viewing validation history
  */
 export async function getRecentValidations(limit: number = 50) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/validations/recent?limit=${limit}`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/validations/recent?limit=${limit}`);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch validations: ${response.status} ${response.statusText}`);
@@ -1387,7 +1342,7 @@ export async function getRecentValidations(limit: number = 50) {
 // ==================== GOLDEN EVALS ====================
 
 export async function getGoldenSuite() {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/golden`);
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/evals/golden`);
   const data = await safeJson(response);
   if (!response.ok || !data.success) {
     throw new Error(data.error || 'Failed to load golden suite');
@@ -1396,7 +1351,7 @@ export async function getGoldenSuite() {
 }
 
 export async function runGoldenExtraction(body: { playbook_ids?: string[]; mode?: string } = {}) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/run-extraction`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/evals/run-extraction`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -1409,7 +1364,7 @@ export async function runGoldenExtraction(body: { playbook_ids?: string[]; mode?
 }
 
 export async function runGoldenDecisions(body: { sample_ids?: string[] } = {}) {
-  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/run-decisions`, {
+  const response = await authedFetch(`${API_BASE}/api/audit-oversight/evals/run-decisions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

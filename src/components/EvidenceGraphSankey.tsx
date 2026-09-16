@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, AlertCircle, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { Chart } from 'react-google-charts';
+import { apiFetch } from '../utils/apiClient';
 
 interface RuleCheck {
   category: string;
@@ -45,7 +46,7 @@ export default function EvidenceGraphSankey({ validationId }: Props) {
       setLoading(true);
       setError('');
       
-      const response = await fetch(`http://localhost:5002/api/audit-oversight/validations/${validationId}`);
+      const response = await apiFetch(`/api/audit-oversight/validations/${validationId}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

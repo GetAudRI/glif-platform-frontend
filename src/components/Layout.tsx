@@ -5,7 +5,7 @@ import {
   ClipboardCheck, TrendingUp, GitBranch, CheckCircle2,
   FileCheck, Receipt, FileSignature, Building2, ShieldCheck
 } from 'lucide-react';
-import { getUsername, clearAuth } from '../utils/auth';
+import { getUsername, isViewer, clearAuth } from '../utils/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -53,6 +53,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const username = getUsername() || 'User';
+  const roleLabel = isViewer() ? 'View only' : 'Presenter';
   const initials = username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   const isActive = (route: string) => {
@@ -69,8 +70,16 @@ export default function Layout({ children }: LayoutProps) {
     modules: navItems.filter(item => item.section === 'modules'),
     auditTools: navItems.filter(item => item.section === 'audit-tools'),
     trendAnalytics: navItems.filter(item => item.section === 'trend-analytics'),
-    testingCost: navItems.filter(item => item.section === 'testing-cost'),
-    configuration: navItems.filter(item => item.section === 'configuration'),
+    testingCost: navItems.filter(item => {
+      if (item.section !== 'testing-cost') return false;
+      if (isViewer() && (item.id.includes('testd') || item.id.includes('golden-eval'))) return false;
+      return true;
+    }),
+    configuration: navItems.filter(item => {
+      if (item.section !== 'configuration') return false;
+      if (isViewer() && item.id.includes('connect')) return false;
+      return true;
+    }),
   };
 
   const renderNavGroup = (label: string, items: NavItem[]) => {
@@ -135,7 +144,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-neutral-900 truncate">{username}</div>
-              <div className="mono text-xs text-neutral-500 truncate">Auditor</div>
+              <div className="mono text-xs text-neutral-500 truncate">{roleLabel}</div>
             </div>
             <button
               onClick={handleLogout}
@@ -150,6 +159,11 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content Area - Scrollable */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {isViewer() && (
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm px-6 py-2">
+            Demo account — view only. You can open existing audit results. Uploads and live validation are disabled.
+          </div>
+        )}
         {children}
       </div>
     </div>

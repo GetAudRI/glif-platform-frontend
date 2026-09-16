@@ -17,6 +17,7 @@ import {
   Factory
 } from 'lucide-react';
 import { listVendors, type Vendor, type VendorAudit, type VendorAuditFinding } from '../../services/vendorAuditApi';
+import { apiFetch } from '../../utils/apiClient';
 
 interface AuditWithDetails extends VendorAudit {
   vendor?: Vendor;
@@ -48,7 +49,7 @@ const AuditHistory: React.FC = () => {
         // Mock: In real implementation, would call getVendorAudits API
         // For now, we'll query the database via a new endpoint
         try {
-          const response = await fetch(`http://localhost:5002/api/vendor-audit/vendors/${vendor.id}`, {
+          const response = await apiFetch(`/api/vendor-audit/vendors/${vendor.id}`, {
             headers: { 'X-User-Id': 'demo-user' }
           });
           const data = await response.json();
@@ -79,7 +80,7 @@ const AuditHistory: React.FC = () => {
 
   const loadAuditDetails = async (audit: AuditWithDetails) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/vendor-audit/audits/${audit.id}`, {
+      const response = await apiFetch(`/api/vendor-audit/audits/${audit.id}`, {
         headers: { 'X-User-Id': 'demo-user' }
       });
       const data = await response.json();

@@ -15,6 +15,7 @@ import {
   setActiveSeedRunId,
   slugifySopName,
 } from './utils/sopNaming';
+import { isViewer } from './utils/auth';
 
 type TestDStage = 'seed' | 'samples';
 
@@ -106,6 +107,14 @@ export default function TestD() {
     const seed = seeds.find((s) => s.id === id);
     if (seed) selectFinalizedSeed(seed);
   };
+
+  if (isViewer()) {
+    return (
+      <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg text-amber-900">
+        TestD is not available on the demo (view-only) account. Open Audit Results to review existing runs.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

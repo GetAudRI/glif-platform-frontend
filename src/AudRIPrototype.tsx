@@ -37,6 +37,7 @@ import ViewExtractions from './components/ViewExtractions';
 import DocumentViewer from './components/DocumentViewer';
 import NarrativeValidationResults from './components/NarrativeValidationResults';
 import ClosedClaimsBatchDashboard from './components/ClosedClaimsBatchDashboard';
+import { API_BASE } from './config';
 // Types
 type GNode = { 
   id: string; 
@@ -1760,7 +1761,7 @@ export default function AudRIPrototype() {
                 <div className="w-full h-[70vh] border border-gray-200 rounded-lg overflow-hidden">
                   <iframe
                     key={selectedConcept}
-                    src={`http://localhost:5002/validation-concepts/${selectedConcept}`}
+                    src={`${API_BASE}/validation-concepts/${selectedConcept}`}
                     title="Audit Concept"
                     className="w-full h-full"
                   />
@@ -1967,14 +1968,14 @@ export default function AudRIPrototype() {
                 <div className="w-full" style={{ height: 'calc(100vh - 300px)', minHeight: '800px' }}>
                   {graphView === 'basic' ? (
                     <iframe
-                      src="http://localhost:5002/templates/graphs_tab_mockup.html"
+                      src={`${API_BASE}/templates/graphs_tab_mockup.html`}
                       className="w-full h-full border-0"
                       title="Basic Link Graphs Visualization"
                       style={{ minHeight: '800px' }}
                     />
                   ) : (
                     <iframe
-                      src="http://localhost:5002/templates/graphs_tab_mockup_enhanced.html"
+                      src={`${API_BASE}/templates/graphs_tab_mockup_enhanced.html`}
                       className="w-full h-full border-0"
                       title="Enhanced Link Graphs Visualization"
                       style={{ minHeight: '800px' }}

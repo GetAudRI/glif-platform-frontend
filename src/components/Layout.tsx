@@ -40,6 +40,7 @@ const navItems: NavItem[] = [
   
   // Testing and Cost
   { id: 'audit-oversight?tab=testd', label: 'TestD', icon: CheckCircle2, route: '/audit-oversight?tab=testd', section: 'testing-cost' },
+  { id: 'audit-oversight?tab=golden-eval', label: 'Golden Eval', icon: BarChart3, route: '/audit-oversight?tab=golden-eval', section: 'testing-cost' },
   { id: 'audit-oversight?tab=cost-analytics', label: 'Cost Analytics', icon: TrendingUp, route: '/audit-oversight?tab=cost-analytics', section: 'testing-cost' },
   
   // Configuration

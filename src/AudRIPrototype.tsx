@@ -26,6 +26,7 @@ import {
 import SingleFileAudit from './SingleFileAudit';
 import SingleFileAuditResults from './SingleFileAuditResults';
 import TestD from './TestD';
+import GoldenEval from './GoldenEval';
 import ProcessingVelocityDashboard from './ProcessingVelocityDashboard';
 import LiveAuditMonitor from './LiveAuditMonitor';
 import CostAnalytics from './components/CostAnalytics';
@@ -35,6 +36,7 @@ import AuditResults from './components/AuditResults';
 import ViewExtractions from './components/ViewExtractions';
 import DocumentViewer from './components/DocumentViewer';
 import NarrativeValidationResults from './components/NarrativeValidationResults';
+import ClosedClaimsBatchDashboard from './components/ClosedClaimsBatchDashboard';
 // Types
 type GNode = { 
   id: string; 
@@ -1015,7 +1017,8 @@ export default function AudRIPrototype() {
       'rules': { title: 'Rules Engine', subtitle: 'Configure and manage audit rules' },
       'graph': { title: 'Link Graph', subtitle: 'Visualize document relationships' },
       'claims': { title: 'Claim Drilldown', subtitle: 'Detailed claim analysis and investigation' },
-      'testd': { title: 'TestD', subtitle: 'Test and validate audit configurations' },
+      'testd': { title: 'TestD', subtitle: 'Create schemas and demo claims for the pipeline' },
+      'golden-eval': { title: 'Golden Eval', subtitle: 'Grade extraction and audit decisions against a frozen answer key' },
       'cost-analytics': { title: 'Cost Analytics', subtitle: 'Monitor and optimize processing costs' },
       'portfolio': { title: 'Portfolio Dashboard', subtitle: 'Overview of all audit activities' },
       'market-conduct': { title: 'Market Conduct Readiness', subtitle: 'Continuous exam preparedness · Aligned to NAIC Unfair Claims Settlement Practices Act' },
@@ -1131,6 +1134,10 @@ export default function AudRIPrototype() {
 
         {activeTab === 'testd' && (
           <TestD />
+        )}
+
+        {activeTab === 'golden-eval' && (
+          <GoldenEval />
         )}
 
         {activeTab === 'corpus' && (
@@ -2032,8 +2039,10 @@ export default function AudRIPrototype() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">📊 Batch Claims Audit</h2>
-                    <p className="text-sm text-gray-600 mt-1">Process multiple claims (up to 25) against SOPs - Bulk workflow</p>
+                    <h2 className="text-xl font-semibold text-gray-900">Batch Claims Audit</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Mock 10,000 closed commercial auto files (3 pages) — or run the live 25-file picker
+                    </p>
                   </div>
                   <button
                     onClick={() => {
@@ -2059,11 +2068,7 @@ export default function AudRIPrototype() {
               </CardHeader>
               <CardContent>
                 {!auditStarted ? (
-                  <div className="text-center py-12">
-                    <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">Click "Start New Audit" to begin</p>
-                    <p className="text-sm text-gray-500">Select claims and SOPs from your uploaded files</p>
-                  </div>
+                  <ClosedClaimsBatchDashboard onStartRealAudit={() => setAuditStarted(true)} />
                 ) : (
                   <div className="space-y-6">
                     {error && (
@@ -2773,7 +2778,7 @@ export default function AudRIPrototype() {
         )}
 
         {/* Default fallback view - shows greyed card for active selection */}
-        {!['connect', 'testd', 'corpus', 'single-audit', 'single-audit-results', 'batch-audits', 'rules', 'graph', 'claims', 'cost-analytics', 'portfolio', 'market-conduct', 'audit-process', 'audit-concepts'].includes(activeTab) && (
+        {!['connect', 'testd', 'golden-eval', 'corpus', 'single-audit', 'single-audit-results', 'batch-audits', 'rules', 'graph', 'claims', 'cost-analytics', 'portfolio', 'market-conduct', 'audit-process', 'audit-concepts'].includes(activeTab) && (
           <div className="max-w-4xl mx-auto">
             <div className="card overflow-hidden">
               {/* Greyed header showing active selection */}

@@ -4,6 +4,7 @@ import { BarChart3, Calendar, CheckCircle2, AlertTriangle, XCircle, RefreshCw, D
 import EvidenceGraphSankey from './components/EvidenceGraphSankey';
 import AuditResultsDetails from './components/AuditResultsDetails';
 import AIAuditTrail from './components/AIAuditTrail';
+import { criticalFailRuleLabel, hasCriticalAutoFail } from './utils/auditVerdict';
 
 interface Validation {
   id: number;
@@ -35,6 +36,7 @@ export default function SingleFileAuditResults() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [ruleChecks, setRuleChecks] = useState<any[]>([]);
 
   const loadValidations = async () => {
     try {
@@ -76,6 +78,31 @@ export default function SingleFileAuditResults() {
   useEffect(() => {
     loadValidations();
   }, []);
+
+  useEffect(() => {
+    if (!selectedValidationId) {
+      setRuleChecks([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:5002/api/audit-oversight/validations/${selectedValidationId}`
+        );
+        const data = await response.json();
+        if (cancelled || !data.success) return;
+        const results = data.validation?.results || {};
+        const checks = results.rule_checks || results.validation_results || [];
+        setRuleChecks(Array.isArray(checks) ? checks : []);
+      } catch {
+        if (!cancelled) setRuleChecks([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedValidationId]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -163,6 +190,8 @@ export default function SingleFileAuditResults() {
   }
 
   const selectedValidation = validations.find(v => v.id === selectedValidationId);
+  const criticalFailure = hasCriticalAutoFail(ruleChecks);
+  const criticalRule = criticalFailRuleLabel(ruleChecks);
 
   return (
     <div className="space-y-6">
@@ -225,6 +254,17 @@ export default function SingleFileAuditResults() {
               {new Date(selectedValidation.validated_at).toLocaleString()}
             </div>
           </div>
+
+          {criticalFailure && (
+            <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-red-700">Verdict</div>
+              <div className="text-xl font-bold text-red-800 mt-0.5">CRITICAL FAILURE</div>
+              <p className="text-sm text-red-800 mt-1">
+                Auto-fail rule violated: {criticalRule}. Rule pass rate stays {selectedValidation.compliance_score}%
+                {' '}({selectedValidation.pass_count || 0} PASS, {selectedValidation.warning_count || 0} WARN, {selectedValidation.fail_count || 0} FAIL).
+              </p>
+            </div>
+          )}
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>

@@ -1234,10 +1234,13 @@ export async function generateClaimsFromSchema(
 export async function generateSchemaPair(
   sopTextOrFile: string | File,
   schemaName: string,
-  schemaVersion: string = '1.0'
+  schemaVersion: string = '1.0',
+  options: { documentType?: string; model?: string } = {}
 ) {
   try {
     let response: Response;
+    const documentType = options.documentType || 'auto_detect';
+    const model = options.model;
 
     if (sopTextOrFile instanceof File) {
       const formData = new FormData();
@@ -1245,6 +1248,8 @@ export async function generateSchemaPair(
       formData.append('schema_name', schemaName);
       formData.append('schema_version', schemaVersion);
       formData.append('filename', sopTextOrFile.name);
+      formData.append('document_type', documentType);
+      if (model) formData.append('model', model);
 
       response = await fetch(`${API_BASE}/api/audit-oversight/generate-schema-pair`, {
         method: 'POST',
@@ -1260,6 +1265,8 @@ export async function generateSchemaPair(
           sop_text: sopTextOrFile,
           schema_name: schemaName,
           schema_version: schemaVersion,
+          document_type: documentType,
+          model,
         }),
       });
     }
@@ -1275,6 +1282,45 @@ export async function generateSchemaPair(
     console.error('Error generating schema pair:', error);
     throw error;
   }
+}
+
+export async function getDocumentTypesCatalog() {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/document-types`);
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Failed to load document types');
+  }
+  return data;
+}
+
+export async function updateSchemaPairRule(body: {
+  sop_schema_file: string;
+  rule_id: string;
+  title?: string;
+  rule_text?: string;
+  description?: string;
+}) {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/schema-pair/rules/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Failed to update rule');
+  }
+  return data;
+}
+
+export async function loadSchemaPairReview(sopSchemaFile: string) {
+  const response = await fetch(
+    `${API_BASE}/api/audit-oversight/schema-pair/load?sop_schema_file=${encodeURIComponent(sopSchemaFile)}`
+  );
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Failed to restore extraction review');
+  }
+  return data;
 }
 
 // ==================== END CLAIM GENERATION API ====================
@@ -1335,5 +1381,42 @@ export async function getRecentValidations(limit: number = 50) {
     throw new Error(data.error || 'Failed to load validations');
   }
   
+  return data;
+}
+
+// ==================== GOLDEN EVALS ====================
+
+export async function getGoldenSuite() {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/golden`);
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Failed to load golden suite');
+  }
+  return data;
+}
+
+export async function runGoldenExtraction(body: { playbook_ids?: string[]; mode?: string } = {}) {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/run-extraction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Extraction eval failed');
+  }
+  return data;
+}
+
+export async function runGoldenDecisions(body: { sample_ids?: string[] } = {}) {
+  const response = await fetch(`${API_BASE}/api/audit-oversight/evals/run-decisions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await safeJson(response);
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Decision eval failed');
+  }
   return data;
 }

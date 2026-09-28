@@ -64,3 +64,13 @@ export function authHeaders(): Record<string, string> {
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
+
+/** Drop a rejected session so the next page load shows login instead of a 401 error. */
+export function expireSession(): void {
+  clearAuth();
+  if (window.location.pathname !== '/') {
+    window.location.assign('/');
+  } else {
+    window.location.reload();
+  }
+}

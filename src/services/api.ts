@@ -1,6 +1,6 @@
 // API Service for AudRI Audit Oversight
 import { API_BASE } from '../config';
-import { authHeaders, canMutate } from '../utils/auth';
+import { authHeaders, canMutate, expireSession } from '../utils/auth';
 
 async function authedFetch(input: string, init: RequestInit = {}) {
   const method = (init.method || 'GET').toUpperCase();
@@ -15,7 +15,11 @@ async function authedFetch(input: string, init: RequestInit = {}) {
   Object.entries(authHeaders()).forEach(([key, value]) => {
     if (!headers.has(key)) headers.set(key, value);
   });
-  return fetch(input, { ...init, headers });
+  const response = await fetch(input, { ...init, headers });
+  if (response.status === 401 && !input.includes('/api/auth/login')) {
+    expireSession();
+  }
+  return response;
 }
 
 async function safeJson(response: Response) {

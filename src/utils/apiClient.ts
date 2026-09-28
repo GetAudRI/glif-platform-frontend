@@ -1,5 +1,5 @@
 import { API_BASE } from '../config';
-import { authHeaders, canMutate } from './auth';
+import { authHeaders, canMutate, expireSession } from './auth';
 
 export { API_BASE };
 
@@ -26,5 +26,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   Object.entries(authHeaders()).forEach(([key, value]) => {
     if (!headers.has(key)) headers.set(key, value);
   });
-  return fetch(apiUrl(path), { ...init, headers });
+  const response = await fetch(apiUrl(path), { ...init, headers });
+  if (response.status === 401 && !path.includes('/api/auth/login')) {
+    expireSession();
+  }
+  return response;
 }

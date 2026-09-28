@@ -15,6 +15,11 @@ type MockClaim = {
 const PAGE_SIZE = 25;
 const PAGE_COUNT = 3;
 const FEATURED = 'CA-2026-99011';
+const FEATURED_FLAGS = [
+  'Missing ELD. Hours of Service were not reviewed.',
+  'Tow paid $2,000 over the $2,500 cap.',
+  'Reservation of Rights sent on day 31.',
+];
 
 const HOLDERS = [
   'Apex Logistics LLC',
@@ -87,7 +92,7 @@ export default function ClosedClaimsBatchDashboard({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-600">
-          Mock closed-file queue for the customer walkthrough. Page through 2–3 pages, select a row, then run the AI audit.
+          Mock closed-file queue for the customer walkthrough. Page through 2–3 pages, select a row, then run the audit.
           The real 25-file picker is still behind <strong>Start New Audit</strong>.
         </p>
         <div className="flex gap-2">
@@ -105,15 +110,15 @@ export default function ClosedClaimsBatchDashboard({
             className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
           >
             <Play className="w-4 h-4" />
-            {running ? 'Opening audit…' : 'Run AI Audit'}
+            {running ? 'Opening audit…' : 'Run Batch AudRI Audit'}
           </button>
         </div>
       </div>
       <p className="text-xs text-gray-500 -mt-2">
-        Run AI Audit opens Audit Results for the frozen file CA-2026-99011 (the live Fast run). Other rows are mock queue padding.
+        Run Batch AudRI Audit opens Audit Results for the frozen file CA-2026-99011 (the live Fast run). Other rows are mock queue padding.
       </p>
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-visible">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
             <tr>
@@ -163,7 +168,22 @@ export default function ClosedClaimsBatchDashboard({
                   </td>
                   <td className="px-3 py-2 text-gray-600">{row.lossDate}</td>
                   <td className="px-3 py-2">
-                    {row.flags > 0 ? (
+                    {row.featured ? (
+                      <span className="group relative inline-flex">
+                        <span className="inline-flex items-center gap-1 text-rose-700 font-medium cursor-help">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          {row.flags}
+                        </span>
+                        <span className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-72 rounded-lg bg-rose-950 px-3 py-2 text-left text-xs font-normal normal-case tracking-normal text-rose-50 shadow-lg group-hover:block">
+                          <span className="mb-1 block font-semibold text-white">Closed-file findings</span>
+                          {FEATURED_FLAGS.map((line) => (
+                            <span key={line} className="block leading-5">
+                              {line}
+                            </span>
+                          ))}
+                        </span>
+                      </span>
+                    ) : row.flags > 0 ? (
                       <span className="inline-flex items-center gap-1 text-rose-700 font-medium">
                         <AlertTriangle className="w-3.5 h-3.5" />
                         {row.flags}

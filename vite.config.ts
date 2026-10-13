@@ -11,9 +11,25 @@ const gitBranch = (() => {
   }
 })()
 
+// Dev server and the Vercel build share this repo. The tab title follows
+// which one is running, so a local label is not what gets deployed.
+const tabTitle = (command: string) =>
+  command === 'serve' ? 'AudRI-Local' : 'AudRI Audit Oversight'
+
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command }) => ({
+  plugins: [
+    react(),
+    {
+      name: 'env-tab-title',
+      transformIndexHtml(html) {
+        return html.replace(
+          /<title>[\s\S]*?<\/title>/,
+          `<title>${tabTitle(command)}</title>`,
+        )
+      },
+    },
+  ],
   define: {
     __BRANCH__: JSON.stringify(gitBranch || 'unknown'),
   },
@@ -29,4 +45,4 @@ export default defineConfig({
   build: {
     sourcemap: true, // Enable source maps for production debugging
   },
-})
+}))
